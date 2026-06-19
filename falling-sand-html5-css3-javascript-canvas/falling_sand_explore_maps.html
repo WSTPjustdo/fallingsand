@@ -1,0 +1,4514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Falling Sand 沙子模拟器</title>
+  <style>
+    :root {
+      --sidebar-width: 290px;
+      --bg-0: #081018;
+      --bg-1: #0f1b26;
+      --bg-2: #172636;
+      --panel: rgba(9, 17, 26, 0.86);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text-main: #f4f7fb;
+      --text-dim: #92a0b1;
+      --accent: #f6be65;
+      --accent-2: #80dcff;
+      --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top, rgba(44, 77, 116, 0.35), transparent 35%),
+        linear-gradient(135deg, var(--bg-0), var(--bg-1) 55%, var(--bg-2));
+      color: var(--text-main);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      position: relative;
+      z-index: 2;
+      padding: 20px 18px 22px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background:
+        linear-gradient(180deg, rgba(9, 17, 26, 0.96), rgba(13, 22, 34, 0.92)),
+        rgba(8, 14, 22, 0.96);
+      border-right: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    .headline {
+      margin-bottom: 18px;
+    }
+
+    .headline h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+      letter-spacing: 0.04em;
+    }
+
+    .headline p {
+      margin: 10px 0 0;
+      color: var(--text-dim);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .toolbar,
+    .control-card,
+    .legend-card,
+    .materials-card {
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 10px;
+    }
+
+    .toolbar button {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+      color: var(--text-main);
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    .toolbar button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(246, 190, 101, 0.55);
+      background:
+        linear-gradient(180deg, rgba(246, 190, 101, 0.2), rgba(255, 255, 255, 0.04));
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mode-btn,
+    .mission-actions button,
+    .banner-actions button {
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+      color: var(--text-main);
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, opacity 120ms ease;
+    }
+
+    .mode-btn:hover,
+    .mission-actions button:hover,
+    .banner-actions button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(128, 220, 255, 0.48);
+      background:
+        linear-gradient(180deg, rgba(128, 220, 255, 0.18), rgba(255, 255, 255, 0.05));
+    }
+
+    .mode-btn.active {
+      border-color: rgba(246, 190, 101, 0.88);
+      background:
+        linear-gradient(180deg, rgba(246, 190, 101, 0.2), rgba(255, 255, 255, 0.05));
+      box-shadow: 0 0 0 1px rgba(246, 190, 101, 0.12);
+    }
+
+    .mission-card,
+    .banner {
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .mission-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .mission-header h2,
+    .mission-header p {
+      margin: 0;
+    }
+
+    .mission-header h2 {
+      font-size: 16px;
+      letter-spacing: 0.03em;
+    }
+
+    .mission-meta {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .mission-summary {
+      margin: 0 0 12px;
+      color: var(--text-dim);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .mission-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .mission-tag {
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-dim);
+      font-size: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .objective-list {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .objective-item {
+      padding: 10px 10px 11px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .objective-item.done {
+      border-color: rgba(110, 224, 156, 0.42);
+      background: rgba(110, 224, 156, 0.08);
+    }
+
+    .explore-panel {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .explore-panel.hidden {
+      display: none;
+    }
+
+    .explore-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    .explore-panel-header strong {
+      color: var(--text-main);
+      font-size: 13px;
+    }
+
+    .explore-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .explore-map-btn {
+      padding: 10px 10px 11px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      text-align: left;
+      cursor: pointer;
+      transition:
+        transform 120ms ease,
+        border-color 120ms ease,
+        background 120ms ease,
+        box-shadow 120ms ease;
+    }
+
+    .explore-map-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(128, 220, 255, 0.42);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .explore-map-btn.active {
+      border-color: rgba(246, 190, 101, 0.78);
+      background:
+        linear-gradient(180deg, rgba(246, 190, 101, 0.16), rgba(255, 255, 255, 0.05));
+      box-shadow: 0 0 0 1px rgba(246, 190, 101, 0.12);
+    }
+
+    .explore-map-btn strong,
+    .explore-map-btn span {
+      display: block;
+    }
+
+    .explore-map-btn strong {
+      margin-bottom: 3px;
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .explore-map-btn span {
+      color: var(--text-dim);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .objective-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .objective-line strong {
+      font-size: 13px;
+    }
+
+    .objective-line span {
+      color: var(--text-dim);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .objective-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .objective-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 140ms ease;
+    }
+
+    .mission-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mission-actions button:disabled,
+    .banner-actions button:disabled,
+    .mode-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .control-card h2,
+    .mission-card h2,
+    .materials-card h2,
+    .legend-card h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: 0.03em;
+    }
+
+    .brush-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .brush-row span:last-child {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .caption {
+      margin: 10px 0 0;
+      color: var(--text-dim);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .materials-card {
+      padding-bottom: 12px;
+    }
+
+    .material-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .material-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--text-main);
+      text-align: left;
+      cursor: pointer;
+      transition:
+        transform 120ms ease,
+        border-color 120ms ease,
+        background 120ms ease,
+        box-shadow 120ms ease;
+    }
+
+    .material-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(128, 220, 255, 0.48);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .material-btn.active {
+      border-color: rgba(246, 190, 101, 0.9);
+      background:
+        linear-gradient(180deg, rgba(246, 190, 101, 0.18), rgba(255, 255, 255, 0.045));
+      box-shadow:
+        0 0 0 1px rgba(246, 190, 101, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .material-btn.disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      filter: saturate(0.5);
+    }
+
+    .swatch {
+      flex: 0 0 16px;
+      width: 16px;
+      height: 16px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: var(--swatch, #fff);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+
+    .material-meta {
+      min-width: 0;
+    }
+
+    .material-name {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .material-kind {
+      display: block;
+      color: var(--text-dim);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .legend-card p {
+      margin: 0;
+      color: var(--text-dim);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .legend-card strong {
+      color: var(--text-main);
+    }
+
+    .canvas-pane {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 25% 20%, rgba(77, 145, 214, 0.12), transparent 28%),
+        radial-gradient(circle at 80% 80%, rgba(255, 132, 64, 0.1), transparent 24%),
+        linear-gradient(180deg, rgba(9, 20, 30, 0.9), rgba(10, 16, 22, 0.98));
+    }
+
+    #simCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      cursor: none;
+      touch-action: none;
+    }
+
+    .status-panel {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 3;
+      display: grid;
+      grid-auto-flow: column;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(7, 12, 18, 0.62);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+    }
+
+    .status-chip {
+      min-width: 90px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .status-chip span {
+      display: block;
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .status-chip strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .hint-card {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      z-index: 3;
+      max-width: 320px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      background: rgba(7, 12, 18, 0.55);
+      color: var(--text-dim);
+      font-size: 13px;
+      line-height: 1.6;
+      backdrop-filter: blur(10px);
+      transition:
+        transform 160ms ease,
+        opacity 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease;
+    }
+
+    .hint-card strong {
+      color: var(--text-main);
+    }
+
+    .hint-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .hint-card p {
+      margin: 0;
+    }
+
+    .hint-toggle {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+
+    .hint-toggle:hover {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: rgba(246, 190, 101, 0.42);
+    }
+
+    .hint-card.collapsed {
+      max-width: none;
+      padding: 10px 12px;
+      background: rgba(7, 12, 18, 0.72);
+    }
+
+    .hint-card.collapsed .hint-card-header {
+      margin-bottom: 0;
+    }
+
+    .hint-card.collapsed .hint-content {
+      display: none;
+    }
+
+    .banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 5;
+      width: min(420px, calc(100% - 40px));
+      margin: 0;
+      transform: translate(-50%, -50%);
+      background: rgba(8, 14, 22, 0.92);
+      box-shadow: 0 28px 60px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(16px);
+      display: none;
+    }
+
+    .banner.show {
+      display: block;
+    }
+
+    .banner h3 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .banner p {
+      margin: 0 0 14px;
+      color: var(--text-dim);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .banner-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .banner-actions button {
+      flex: 1 1 auto;
+    }
+
+    .celebration-burst {
+      position: absolute;
+      top: 38%;
+      left: 50%;
+      z-index: 6;
+      width: min(300px, calc(100% - 64px));
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.82);
+    }
+
+    .celebration-burst.show {
+      animation: celebration-pop 1400ms ease forwards;
+    }
+
+    .celebration-core {
+      position: relative;
+      padding: 14px 18px;
+      border: 1px solid rgba(255, 236, 176, 0.5);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at top, rgba(255, 247, 214, 0.24), transparent 62%),
+        rgba(16, 22, 32, 0.88);
+      box-shadow:
+        0 22px 46px rgba(0, 0, 0, 0.26),
+        0 0 0 1px rgba(255, 216, 122, 0.12);
+      text-align: center;
+    }
+
+    .celebration-core::before {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border: 1px solid rgba(255, 214, 114, 0.16);
+      border-radius: 24px;
+      animation: celebration-glow 780ms ease-out 2;
+    }
+
+    .celebration-core strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 20px;
+      line-height: 1.1;
+      color: #fff6d6;
+    }
+
+    .celebration-core span {
+      display: block;
+      color: rgba(237, 242, 255, 0.86);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .celebration-spark {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: var(--spark-size, 10px);
+      height: var(--spark-size, 10px);
+      margin-left: calc(var(--spark-size, 10px) / -2);
+      margin-top: calc(var(--spark-size, 10px) / -2);
+      border-radius: 999px;
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(255, 214, 96, 0.88) 55%, rgba(255, 152, 64, 0));
+      opacity: 0;
+      filter: drop-shadow(0 0 10px rgba(255, 200, 74, 0.32));
+    }
+
+    .celebration-burst.show .celebration-spark {
+      animation: celebration-spark 860ms ease-out var(--spark-delay, 0ms) forwards;
+    }
+
+    @keyframes celebration-pop {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -46%) scale(0.82);
+      }
+
+      18% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      78% {
+        opacity: 1;
+        transform: translate(-50%, -52%) scale(1.02);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -56%) scale(0.94);
+      }
+    }
+
+    @keyframes celebration-spark {
+      0% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0.45);
+      }
+
+      18% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1.2);
+      }
+    }
+
+    @keyframes celebration-glow {
+      0% {
+        opacity: 0;
+        transform: scale(0.92);
+      }
+
+      35% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+        transform: scale(1.08);
+      }
+    }
+
+    .brush-preview {
+      position: absolute;
+      z-index: 4;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px dashed rgba(255, 255, 255, 0.75);
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.25),
+        inset 0 0 18px rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    .brush-preview::after {
+      content: "";
+      position: absolute;
+      inset: 50%;
+      width: 4px;
+      height: 4px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    @media (max-width: 920px) {
+      :root {
+        --sidebar-width: 250px;
+      }
+
+      .status-panel {
+        grid-auto-flow: row;
+      }
+
+      .status-chip {
+        min-width: 120px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: min(80vw, 270px);
+        max-width: 100%;
+      }
+
+      .canvas-pane {
+        padding-left: min(80vw, 270px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="headline">
+        <h1>Falling Sand</h1>
+        <p>原生 HTML5 + Canvas 2D 的沙子物理模拟器。左键绘制，右键擦除，滚轮调节画笔。</p>
+      </div>
+
+      <div class="toolbar">
+        <button id="clearBtn" type="button">清空画布</button>
+        <button id="pauseBtn" type="button">暂停模拟</button>
+      </div>
+
+      <section class="mission-card">
+        <div class="mode-switch">
+          <button id="sandboxModeBtn" class="mode-btn active" type="button">沙盒模式</button>
+          <button id="exploreModeBtn" class="mode-btn" type="button">探索模式</button>
+          <button id="challengeModeBtn" class="mode-btn" type="button">任务模式</button>
+        </div>
+
+        <div class="mission-header">
+          <div>
+            <h2 id="missionTitle">自由沙盒</h2>
+            <p id="missionSubtitle" class="mission-summary">自由组合材质与反应。准备好后可随时切换到任务模式挑战关卡。</p>
+          </div>
+          <span id="missionMeta" class="mission-meta">Sandbox</span>
+        </div>
+
+        <div id="missionTags" class="mission-tags">
+          <span class="mission-tag">无限材料</span>
+          <span class="mission-tag">自由实验</span>
+        </div>
+
+        <div id="objectiveList" class="objective-list">
+          <div class="objective-item">
+            <div class="objective-line">
+              <strong>在这里自由实验材质反应</strong>
+              <span>未启用任务</span>
+            </div>
+            <div class="objective-track">
+              <div class="objective-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="explorePanel" class="explore-panel hidden">
+          <div class="explore-panel-header">
+            <strong>环境地图</strong>
+            <span>选择一张开始改造</span>
+          </div>
+          <div id="exploreGrid" class="explore-grid"></div>
+        </div>
+
+        <div class="mission-actions">
+          <button id="restartLevelBtn" type="button" disabled>重新开始本关</button>
+          <button id="nextLevelBtn" type="button" disabled>下一关</button>
+        </div>
+      </section>
+
+      <section class="control-card">
+        <h2>画笔控制</h2>
+        <div class="brush-row">
+          <span>画笔半径</span>
+          <span id="brushValue">12 px</span>
+        </div>
+        <input id="brushSlider" type="range" min="1" max="50" value="12" />
+        <div class="brush-row">
+          <span>重力倍率</span>
+          <span id="gravityValue">1.0x</span>
+        </div>
+        <input id="gravitySlider" type="range" min="0" max="300" step="5" value="100" />
+        <div class="brush-row">
+          <span>反应倍率</span>
+          <span id="reactionValue">1.0x</span>
+        </div>
+        <input id="reactionSlider" type="range" min="0" max="300" step="5" value="100" />
+        <p class="caption">范围限制在 1px 到 50px。滚轮可快速缩放，绘制时会显示实时预览圈。任务模式默认会把重力与反应速率降到 0.1x，你也可以随时手动调节。</p>
+      </section>
+
+      <section class="materials-card">
+        <h2>物质面板</h2>
+        <div id="materialGrid" class="material-grid"></div>
+      </section>
+
+      <section class="legend-card">
+        <h2>反应提示</h2>
+        <p>
+          <strong>水 / 雨 + 火</strong> 会熄灭并蒸发；
+          <strong>岩浆</strong> 遇水或冰会快速冷却；
+          <strong>油、植物、火药、炸药</strong> 遇火会持续燃烧或爆炸；
+          <strong>酸</strong> 会腐蚀大部分物质；
+          <strong>外露水体</strong> 会逐步蒸发成蒸汽，蒸汽再凝成雨；
+          <strong>藻类</strong> 接水会浮到水面；
+          <strong>小虫</strong> 会啃食植物和藻类并扩散；
+          <strong>根系 / 种子</strong> 接触土壤会逐步长成植物。
+        </p>
+      </section>
+    </aside>
+
+    <main class="canvas-pane" id="canvasPane">
+      <canvas id="simCanvas"></canvas>
+
+      <div class="status-panel">
+        <div class="status-chip">
+          <span>FPS</span>
+          <strong id="fpsLabel">0</strong>
+        </div>
+        <div class="status-chip">
+          <span>当前物质</span>
+          <strong id="materialLabel">沙子</strong>
+        </div>
+        <div class="status-chip">
+          <span>画笔大小</span>
+          <strong id="brushLabel">12 px</strong>
+        </div>
+        <div class="status-chip">
+          <span>粒子数量</span>
+          <strong id="particleLabel">0</strong>
+        </div>
+        <div class="status-chip">
+          <span>模式 / 关卡</span>
+          <strong id="levelLabel">沙盒</strong>
+        </div>
+      </div>
+
+      <div id="hintCard" class="hint-card">
+        <div class="hint-card-header">
+          <strong id="hintTitle">操作说明</strong>
+          <button id="hintToggle" class="hint-toggle" type="button">隐藏说明</button>
+        </div>
+        <p id="hintContent" class="hint-content">
+          鼠标左键绘制当前材质，右键拖拽擦除。<br />
+          画面使用基于网格的粒子更新，并限制单帧最大更新量，保证低配置设备也能稳定运行。
+        </p>
+      </div>
+
+      <div id="missionBanner" class="banner">
+        <h3 id="bannerTitle">任务完成</h3>
+        <p id="bannerBody">已完成当前目标，准备进入下一关。</p>
+        <div class="banner-actions">
+          <button id="bannerRestartBtn" type="button">重玩本关</button>
+          <button id="bannerNextBtn" type="button">进入下一关</button>
+        </div>
+      </div>
+
+      <div id="celebrationBurst" class="celebration-burst" aria-hidden="true">
+        <div class="celebration-core">
+          <strong id="celebrationTitle">过关啦</strong>
+          <span id="celebrationText">继续保持，下一关也会很顺手。</span>
+        </div>
+      </div>
+
+      <div id="brushPreview" class="brush-preview"></div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var requestFrame = window.requestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        function (callback) {
+          return window.setTimeout(function () {
+            callback(Date.now());
+          }, 16);
+        };
+
+      function getNowMs() {
+        return window.performance && window.performance.now ? window.performance.now() : Date.now();
+      }
+
+      function isFiniteNumber(value) {
+        return typeof value === "number" && isFinite(value);
+      }
+
+      function sign(value) {
+        if (value > 0) {
+          return 1;
+        }
+        if (value < 0) {
+          return -1;
+        }
+        return 0;
+      }
+
+      var MATERIALS = {
+        rock: { name: "岩石", state: "固态", behavior: "static", density: 100, flow: 0, fallSpeed: 0, color: "#525761", accent: "#6d7482", acidImmune: true },
+        sand: { name: "沙子", state: "固态", behavior: "powder", density: 7, flow: 1, fallSpeed: 2, color: "#dfc96d", accent: "#f2dd8b" },
+        soil: { name: "土", state: "固态", behavior: "powder", density: 6, flow: 1, fallSpeed: 2, color: "#8a5a3c", accent: "#a9714d" },
+        seed: { name: "种子", state: "生物态", behavior: "powder", density: 5, flow: 1, fallSpeed: 2, color: "#b68654", accent: "#e0b77c", flammable: true },
+        plant: { name: "植物", state: "固态", behavior: "static", density: 6, flow: 0, fallSpeed: 0, color: "#4caf50", accent: "#8bcf6a", flammable: true },
+        root: { name: "根系", state: "生物态", behavior: "static", density: 7, flow: 0, fallSpeed: 0, color: "#6d4a2f", accent: "#a1704c", flammable: true },
+        algae: { name: "藻类", state: "生物态", behavior: "static", density: 3, flow: 0, fallSpeed: 0, color: "#2d9c74", accent: "#69d6a4", flammable: true },
+        ice: { name: "冰块", state: "固态", behavior: "static", density: 8, flow: 0, fallSpeed: 0, color: "#a8ddff", accent: "#d8f2ff", cold: true },
+        ash: { name: "灰烬", state: "固态", behavior: "powder", density: 3, flow: 1, fallSpeed: 1, color: "#bec4cc", accent: "#dce1e8" },
+        metal: { name: "金属", state: "固态", behavior: "static", density: 120, flow: 0, fallSpeed: 0, color: "#9aa2b3", accent: "#c7cedb", acidImmune: true },
+        water: { name: "水", state: "液态", behavior: "liquid", density: 4, flow: 5, fallSpeed: 2, color: "#4ea6ff", accent: "#88d6ff" },
+        rain: { name: "雨", state: "液态", behavior: "liquid", density: 4.5, flow: 2, fallSpeed: 3, life: [80, 150], color: "#255ad5", accent: "#58a2ff" },
+        lava: { name: "岩浆", state: "液态", behavior: "liquid", density: 9, flow: 2, fallSpeed: 2, temp: 26, color: "#ff6326", accent: "#ffcf56", hot: true },
+        oil: { name: "油", state: "液态", behavior: "liquid", density: 2, flow: 4, fallSpeed: 2, color: "#4c2d1f", accent: "#7d4f34", flammable: true },
+        acid: { name: "酸", state: "液态", behavior: "liquid", density: 5, flow: 4, fallSpeed: 2, life: [240, 420], color: "#86ff46", accent: "#dbff55", corrosive: true },
+        fire: { name: "火", state: "等离子态", behavior: "fire", density: -1, flow: 2, fallSpeed: 0, life: [12, 22], temp: 12, color: "#ff6d1f", accent: "#ffe264", hot: true },
+        steam: { name: "水蒸气", state: "气态", behavior: "gas", density: -3, flow: 3, fallSpeed: 0, life: [55, 120], color: "#f4f8ff", accent: "#ffffff", alpha: 0.45 },
+        smoke: { name: "烟雾", state: "气态", behavior: "gas", density: -2, flow: 3, fallSpeed: 0, life: [70, 160], color: "#7f858f", accent: "#b0b6be", alpha: 0.38 },
+        ember: { name: "火星", state: "特殊态", behavior: "ember", density: -0.5, flow: 2, fallSpeed: 0, life: [20, 40], temp: 9, color: "#ff9a2b", accent: "#ffd36b", hot: true },
+        worm: { name: "蚯蚓", state: "生物态", behavior: "creature", density: 5, flow: 1, fallSpeed: 0, life: [260, 520], color: "#b16f57", accent: "#d6a183", flammable: true },
+        bug: { name: "小虫", state: "生物态", behavior: "creature", density: 4, flow: 1, fallSpeed: 0, life: [220, 420], color: "#8fd163", accent: "#d7f18c", flammable: true },
+        gunpowder: { name: "火药", state: "固态", behavior: "powder", density: 7, flow: 1, fallSpeed: 2, color: "#191a1d", accent: "#393b40", explosive: "small", flammable: true },
+        explosive: { name: "炸药", state: "固态", behavior: "powder", density: 8, flow: 1, fallSpeed: 2, color: "#7d3030", accent: "#b54a3f", explosive: "large", flammable: true }
+      };
+
+      var MATERIAL_ORDER = [
+        "sand", "water", "rock", "soil", "seed", "plant", "root", "algae", "worm", "bug",
+        "ice", "ash", "metal", "rain", "lava", "oil", "acid", "fire", "steam", "smoke", "ember", "gunpowder", "explosive"
+      ];
+
+      var HOT_TYPES = { fire: true, ember: true, lava: true };
+      var EXTINGUISH_TYPES = { water: true, rain: true };
+      var WATER_TYPES = { water: true, rain: true };
+      var SOIL_TYPES = { soil: true, sand: true, ash: true };
+      var PLANT_TYPES = { seed: true, plant: true, root: true, algae: true };
+      var LIVING_TYPES = { seed: true, plant: true, root: true, algae: true, worm: true, bug: true };
+      var SOFT_TYPES = { sand: true, soil: true, seed: true, plant: true, root: true, algae: true, worm: true, bug: true, ash: true, oil: true, gunpowder: true, explosive: true };
+      var NEIGHBORS_8 = [
+        [-1, -1], [0, -1], [1, -1],
+        [-1, 0], [1, 0],
+        [-1, 1], [0, 1], [1, 1]
+      ];
+
+      var ui = {
+        canvas: document.getElementById("simCanvas"),
+        pane: document.getElementById("canvasPane"),
+        materialGrid: document.getElementById("materialGrid"),
+        clearBtn: document.getElementById("clearBtn"),
+        pauseBtn: document.getElementById("pauseBtn"),
+        fpsLabel: document.getElementById("fpsLabel"),
+        materialLabel: document.getElementById("materialLabel"),
+        brushLabel: document.getElementById("brushLabel"),
+        particleLabel: document.getElementById("particleLabel"),
+        brushSlider: document.getElementById("brushSlider"),
+        brushValue: document.getElementById("brushValue"),
+        gravitySlider: document.getElementById("gravitySlider"),
+        gravityValue: document.getElementById("gravityValue"),
+        reactionSlider: document.getElementById("reactionSlider"),
+        reactionValue: document.getElementById("reactionValue"),
+        brushPreview: document.getElementById("brushPreview"),
+        hintCard: document.getElementById("hintCard"),
+        hintToggle: document.getElementById("hintToggle"),
+        hintTitle: document.getElementById("hintTitle"),
+        sandboxModeBtn: document.getElementById("sandboxModeBtn"),
+        exploreModeBtn: document.getElementById("exploreModeBtn"),
+        challengeModeBtn: document.getElementById("challengeModeBtn"),
+        missionTitle: document.getElementById("missionTitle"),
+        missionSubtitle: document.getElementById("missionSubtitle"),
+        missionMeta: document.getElementById("missionMeta"),
+        missionTags: document.getElementById("missionTags"),
+        objectiveList: document.getElementById("objectiveList"),
+        explorePanel: document.getElementById("explorePanel"),
+        exploreGrid: document.getElementById("exploreGrid"),
+        restartLevelBtn: document.getElementById("restartLevelBtn"),
+        nextLevelBtn: document.getElementById("nextLevelBtn"),
+        levelLabel: document.getElementById("levelLabel"),
+        missionBanner: document.getElementById("missionBanner"),
+        bannerTitle: document.getElementById("bannerTitle"),
+        bannerBody: document.getElementById("bannerBody"),
+        bannerRestartBtn: document.getElementById("bannerRestartBtn"),
+        bannerNextBtn: document.getElementById("bannerNextBtn"),
+        celebrationBurst: document.getElementById("celebrationBurst"),
+        celebrationTitle: document.getElementById("celebrationTitle"),
+        celebrationText: document.getElementById("celebrationText")
+      };
+
+      var ctx = ui.canvas && ui.canvas.getContext ? ui.canvas.getContext("2d") : null;
+      if (!ctx) {
+        alert("当前浏览器无法初始化 Canvas 2D，建议换用 Chrome、Edge 或 Firefox 打开 index.html。");
+        return;
+      }
+
+      var cols = 0;
+      var rows = 0;
+      var cellSize = 4;
+      var grid = [];
+      var imageData = null;
+      var pixelBuffer = null;
+      var frameId = 0;
+      var particleCount = 0;
+      var paused = false;
+      var brushRadius = 12;
+      var selectedType = "sand";
+      var MODE_PHYSICS_DEFAULTS = {
+        sandbox: { gravity: 1, reaction: 1 },
+        explore: { gravity: 1, reaction: 1 },
+        challenge: { gravity: 0.1, reaction: 0.1 }
+      };
+      var modePhysics = {
+        sandbox: { gravity: MODE_PHYSICS_DEFAULTS.sandbox.gravity, reaction: MODE_PHYSICS_DEFAULTS.sandbox.reaction },
+        explore: { gravity: MODE_PHYSICS_DEFAULTS.explore.gravity, reaction: MODE_PHYSICS_DEFAULTS.explore.reaction },
+        challenge: { gravity: MODE_PHYSICS_DEFAULTS.challenge.gravity, reaction: MODE_PHYSICS_DEFAULTS.challenge.reaction }
+      };
+      var smoothedFps = 0;
+      var lastTime = getNowMs();
+      var effects = [];
+      var hintCollapsed = false;
+      var mode = "sandbox";
+      var activeLevelIndex = -1;
+      var activeLevel = null;
+      var activeExploreIndex = -1;
+      var activeExploreMap = null;
+      var activeObjectives = [];
+      var activeLayout = null;
+      var levelRuntime = null;
+      var lastStatsFrame = -1;
+      var currentNow = getNowMs();
+      var celebrationTimer = 0;
+
+      var mouse = {
+        inside: false,
+        down: false,
+        erase: false,
+        pointerId: null,
+        lastGridX: null,
+        lastGridY: null
+      };
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function randomRange(min, max) {
+        return min + Math.floor(Math.random() * (max - min + 1));
+      }
+
+      function chance(rate) {
+        return Math.random() < rate;
+      }
+
+      function getActiveLevelTuning() {
+        return mode === "challenge" && activeLevel && activeLevel.tuning ? activeLevel.tuning : null;
+      }
+
+      function getLevelRate(base, key) {
+        var tuning = getActiveLevelTuning();
+        var multiplier = tuning && isFiniteNumber(tuning[key]) ? tuning[key] : 1;
+        multiplier *= getReactionScale();
+        return clamp(base * multiplier, 0, 1);
+      }
+
+      function getLevelScaledValue(base, key) {
+        var tuning = getActiveLevelTuning();
+        var multiplier = tuning && isFiniteNumber(tuning[key]) ? tuning[key] : 1;
+        return base * multiplier;
+      }
+
+      function getCurrentPhysicsState() {
+        return modePhysics[mode] || modePhysics.sandbox;
+      }
+
+      function getGravityScale() {
+        return clamp(getCurrentPhysicsState().gravity, 0, 3);
+      }
+
+      function getReactionScale() {
+        return clamp(getCurrentPhysicsState().reaction, 0, 3);
+      }
+
+      function getGravityRate(base) {
+        return clamp(base * getGravityScale(), 0, 1);
+      }
+
+      function getScaledStepCount(base, scale) {
+        var scaled = Math.max(0, base * scale);
+        var whole = Math.floor(scaled);
+        if (chance(scaled - whole)) {
+          whole += 1;
+        }
+        return whole;
+      }
+
+      function formatScaleValue(value) {
+        return (value < 1 ? value.toFixed(2) : value.toFixed(1)) + "x";
+      }
+
+      function updatePhysicsUI() {
+        var state = getCurrentPhysicsState();
+        ui.gravitySlider.value = String(Math.round(state.gravity * 100));
+        ui.reactionSlider.value = String(Math.round(state.reaction * 100));
+        ui.gravityValue.innerHTML = formatScaleValue(state.gravity);
+        ui.reactionValue.innerHTML = formatScaleValue(state.reaction);
+      }
+
+      function mix(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function parseColor(hex) {
+        var clean = hex.replace("#", "");
+        var normalized;
+        var value;
+        if (clean.length === 3) {
+          normalized = clean.charAt(0) + clean.charAt(0) + clean.charAt(1) + clean.charAt(1) + clean.charAt(2) + clean.charAt(2);
+        } else {
+          normalized = clean;
+        }
+        value = parseInt(normalized, 16);
+        return {
+          r: (value >> 16) & 255,
+          g: (value >> 8) & 255,
+          b: value & 255
+        };
+      }
+
+      function forEachMaterial(callback) {
+        var keys = Object.keys(MATERIALS);
+        var i;
+        for (i = 0; i < keys.length; i += 1) {
+          callback(keys[i], MATERIALS[keys[i]]);
+        }
+      }
+
+      forEachMaterial(function (key, material) {
+        material.rgb = parseColor(material.color);
+        material.accentRgb = parseColor(material.accent || material.color);
+      });
+
+      function rectRatio(left, top, width, height) {
+        var x = clamp(Math.floor(cols * left), 0, Math.max(0, cols - 1));
+        var y = clamp(Math.floor(rows * top), 0, Math.max(0, rows - 1));
+        var w = clamp(Math.floor(cols * width), 2, Math.max(2, cols - x));
+        var h = clamp(Math.floor(rows * height), 2, Math.max(2, rows - y));
+        if (x + w > cols) {
+          w = cols - x;
+        }
+        if (y + h > rows) {
+          h = rows - y;
+        }
+        return { x: x, y: y, w: w, h: h };
+      }
+
+      function expandRect(rect, paddingX, paddingY) {
+        var x = clamp(rect.x - paddingX, 0, cols - 1);
+        var y = clamp(rect.y - paddingY, 0, rows - 1);
+        var right = clamp(rect.x + rect.w + paddingX, 0, cols);
+        var bottom = clamp(rect.y + rect.h + paddingY, 0, rows);
+        return {
+          x: x,
+          y: y,
+          w: Math.max(1, right - x),
+          h: Math.max(1, bottom - y)
+        };
+      }
+
+      function createLayout(zoneList) {
+        var i;
+        var map = {};
+        for (i = 0; i < zoneList.length; i += 1) {
+          map[zoneList[i].id] = zoneList[i];
+        }
+        return {
+          zones: zoneList,
+          zoneMap: map
+        };
+      }
+
+      function fillRect(rect, type, density) {
+        var y;
+        var x;
+        density = density === undefined ? 1 : density;
+        for (y = rect.y; y < rect.y + rect.h; y += 1) {
+          for (x = rect.x; x < rect.x + rect.w; x += 1) {
+            if (density >= 1 || chance(density)) {
+              setCell(x, y, createParticle(type));
+            }
+          }
+        }
+      }
+
+      function clearRect(rect) {
+        var y;
+        var x;
+        for (y = rect.y; y < rect.y + rect.h; y += 1) {
+          for (x = rect.x; x < rect.x + rect.w; x += 1) {
+            clearCell(x, y);
+          }
+        }
+      }
+
+      function outlineRect(rect, type, thickness) {
+        var layer;
+        var x;
+        var y;
+        thickness = thickness || 1;
+        for (layer = 0; layer < thickness; layer += 1) {
+          for (x = rect.x + layer; x < rect.x + rect.w - layer; x += 1) {
+            setCell(x, rect.y + layer, createParticle(type));
+            setCell(x, rect.y + rect.h - 1 - layer, createParticle(type));
+          }
+          for (y = rect.y + layer; y < rect.y + rect.h - layer; y += 1) {
+            setCell(rect.x + layer, y, createParticle(type));
+            setCell(rect.x + rect.w - 1 - layer, y, createParticle(type));
+          }
+        }
+      }
+
+      function fillCircle(cx, cy, radius, type, density) {
+        var x;
+        var y;
+        var dx;
+        var dy;
+        density = density === undefined ? 1 : density;
+        for (y = cy - radius; y <= cy + radius; y += 1) {
+          for (x = cx - radius; x <= cx + radius; x += 1) {
+            dx = x - cx;
+            dy = y - cy;
+            if ((dx * dx) + (dy * dy) > radius * radius || !inBounds(x, y)) {
+              continue;
+            }
+            if (density >= 1 || chance(density)) {
+              setCell(x, y, createParticle(type));
+            }
+          }
+        }
+      }
+
+      function sumCounts(map, types) {
+        var total = 0;
+        var i;
+        for (i = 0; i < types.length; i += 1) {
+          total += map[types[i]] || 0;
+        }
+        return total;
+      }
+
+      function getZoneStats(stats, zoneId) {
+        return stats.zones[zoneId] || { total: 0, occupied: 0, empty: 0, types: {} };
+      }
+
+      function getZoneTypeCount(stats, zoneId, types) {
+        var zone = getZoneStats(stats, zoneId);
+        return sumCounts(zone.types, typeof types === "string" ? [types] : types);
+      }
+
+      function getGlobalTypeCount(stats, types) {
+        return sumCounts(stats.global, typeof types === "string" ? [types] : types);
+      }
+
+      function clampRatio(value) {
+        return clamp(value, 0, 1);
+      }
+
+      function formatAllowedMaterials(list) {
+        var names = [];
+        var i;
+        for (i = 0; i < list.length; i += 1) {
+          names.push(MATERIALS[list[i]].name);
+        }
+        return names.join(" / ");
+      }
+
+      function fillEllipse(cx, cy, radiusX, radiusY, type, density) {
+        var x;
+        var y;
+        var dx;
+        var dy;
+        density = density === undefined ? 1 : density;
+        radiusX = Math.max(1, radiusX);
+        radiusY = Math.max(1, radiusY);
+        for (y = Math.floor(cy - radiusY); y <= Math.ceil(cy + radiusY); y += 1) {
+          for (x = Math.floor(cx - radiusX); x <= Math.ceil(cx + radiusX); x += 1) {
+            if (!inBounds(x, y)) {
+              continue;
+            }
+            dx = (x - cx) / radiusX;
+            dy = (y - cy) / radiusY;
+            if ((dx * dx) + (dy * dy) > 1) {
+              continue;
+            }
+            if (density >= 1 || chance(density)) {
+              setCell(x, y, createParticle(type));
+            }
+          }
+        }
+      }
+
+      function fillTerrainBand(type, baseTopRatio, amplitudeRatio, density, leftRatio, rightRatio) {
+        var left = clamp(Math.floor(cols * (leftRatio === undefined ? 0 : leftRatio)), 0, cols - 1);
+        var right = clamp(Math.floor(cols * (rightRatio === undefined ? 1 : rightRatio)), left, cols - 1);
+        var width = Math.max(1, right - left);
+        var amplitude = Math.max(1, Math.floor(rows * amplitudeRatio));
+        var baseTop = Math.floor(rows * baseTopRatio);
+        var phaseA = Math.random() * Math.PI * 2;
+        var phaseB = Math.random() * Math.PI * 2;
+        var x;
+        var y;
+        var t;
+        var wave;
+        var top;
+        density = density === undefined ? 1 : density;
+        for (x = left; x <= right; x += 1) {
+          t = (x - left) / width;
+          wave =
+            Math.sin((t * 6.1) + phaseA) * amplitude * 0.68 +
+            Math.sin((t * 12.7) + phaseB) * amplitude * 0.32;
+          top = clamp(Math.floor(baseTop + wave), 0, rows - 1);
+          for (y = top; y < rows; y += 1) {
+            if (density >= 1 || chance(density)) {
+              setCell(x, y, createParticle(type));
+            }
+          }
+        }
+      }
+
+      function drawMaterialPath(points, radius, type, density) {
+        var i;
+        var steps;
+        var step;
+        var x;
+        var y;
+        density = density === undefined ? 1 : density;
+        radius = Math.max(1, radius);
+        for (i = 0; i < points.length - 1; i += 1) {
+          steps = Math.max(Math.abs(points[i + 1].x - points[i].x), Math.abs(points[i + 1].y - points[i].y), 1);
+          for (step = 0; step <= steps; step += 1) {
+            x = Math.round(points[i].x + ((points[i + 1].x - points[i].x) * step) / steps);
+            y = Math.round(points[i].y + ((points[i + 1].y - points[i].y) * step) / steps);
+            fillCircle(x, y, radius, type, density);
+          }
+        }
+      }
+
+      function scatterClusters(areaRect, type, count, minRadius, maxRadius, density) {
+        var i;
+        var cx;
+        var cy;
+        for (i = 0; i < count; i += 1) {
+          cx = randomRange(areaRect.x, Math.max(areaRect.x, areaRect.x + areaRect.w - 1));
+          cy = randomRange(areaRect.y, Math.max(areaRect.y, areaRect.y + areaRect.h - 1));
+          fillCircle(cx, cy, randomRange(minRadius, maxRadius), type, density);
+        }
+      }
+
+      function fillCone(centerXRatio, baseYRatio, halfWidthRatio, peakYRatio, type, density) {
+        var cx = Math.floor(cols * centerXRatio);
+        var baseY = clamp(Math.floor(rows * baseYRatio), 0, rows - 1);
+        var peakY = clamp(Math.floor(rows * peakYRatio), 0, rows - 1);
+        var halfWidth = Math.max(4, Math.floor(cols * halfWidthRatio));
+        var x;
+        var y;
+        var slope;
+        var top;
+        density = density === undefined ? 1 : density;
+        for (x = cx - halfWidth; x <= cx + halfWidth; x += 1) {
+          if (!inBounds(x, baseY)) {
+            continue;
+          }
+          slope = Math.abs(x - cx) / halfWidth;
+          if (slope > 1) {
+            continue;
+          }
+          top = clamp(Math.floor(mix(peakY, baseY, slope)), 0, rows - 1);
+          for (y = top; y < rows; y += 1) {
+            if (density >= 1 || chance(density)) {
+              setCell(x, y, createParticle(type));
+            }
+          }
+        }
+      }
+
+      var EXPLORE_MAPS = [
+        {
+          title: "沙地森林",
+          buttonSubtitle: "沙丘、绿洲与耐旱植被",
+          subtitle: "系统会自动铺出沙丘、地下湿土与绿洲，你可以继续引水、造林或改成完全不同的生态。",
+          starterMaterial: "water",
+          tags: ["探索模式", "干旱生态", "可自由改造"],
+          cards: [
+            { label: "环境结构", detail: "沙海、湿土、绿洲与零散树林", ratio: 0.82 },
+            { label: "推荐玩法", detail: "扩张水源、增加植被、改造地形", ratio: 0.72 },
+            { label: "可用材料", detail: "完整物质面板均可使用", ratio: 1 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("soil", 0.80, 0.03, 0.86);
+            fillTerrainBand("sand", 0.66, 0.08, 1);
+            fillEllipse(cols * 0.48, rows * 0.75, Math.max(10, Math.floor(cols * 0.12)), Math.max(4, Math.floor(rows * 0.05)), "water", 0.98);
+            fillEllipse(cols * 0.48, rows * 0.75, Math.max(5, Math.floor(cols * 0.055)), Math.max(2, Math.floor(rows * 0.02)), "algae", 0.22);
+            scatterClusters(rectRatio(0.28, 0.62, 0.14, 0.12), "plant", 8, 2, 4, 0.72);
+            scatterClusters(rectRatio(0.56, 0.61, 0.15, 0.13), "plant", 9, 2, 4, 0.74);
+            scatterClusters(rectRatio(0.31, 0.73, 0.12, 0.08), "root", 5, 2, 3, 0.42);
+            scatterClusters(rectRatio(0.57, 0.73, 0.12, 0.08), "root", 5, 2, 3, 0.42);
+            scatterClusters(rectRatio(0.16, 0.58, 0.68, 0.18), "seed", 12, 1, 2, 0.46);
+            scatterClusters(rectRatio(0.08, 0.58, 0.84, 0.16), "rock", 10, 2, 4, 0.65);
+          }
+        },
+        {
+          title: "极地冰原",
+          buttonSubtitle: "冰层、裂海与寒冷海岸",
+          subtitle: "厚冰会覆盖海面，裂隙间保留流动海水。你可以打通冰面、改变水系，或者直接重塑极地。",
+          starterMaterial: "ice",
+          tags: ["探索模式", "寒带环境", "冰水交错"],
+          cards: [
+            { label: "环境结构", detail: "海水、冰架、冻土地带与岩岸", ratio: 0.84 },
+            { label: "推荐玩法", detail: "融冰引流、筑冰川、开辟水道", ratio: 0.68 },
+            { label: "可用材料", detail: "完整物质面板均可使用", ratio: 1 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.92, 1, 0.08), "rock", 1);
+            fillRect(rectRatio(0, 0.78, 1, 0.14), "water", 0.95);
+            fillTerrainBand("ice", 0.60, 0.05, 0.96);
+            fillEllipse(cols * 0.18, rows * 0.66, Math.max(10, Math.floor(cols * 0.12)), Math.max(5, Math.floor(rows * 0.09)), "ice", 0.95);
+            fillEllipse(cols * 0.79, rows * 0.63, Math.max(11, Math.floor(cols * 0.13)), Math.max(5, Math.floor(rows * 0.10)), "ice", 0.94);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.08), y: Math.floor(rows * 0.70) },
+              { x: Math.floor(cols * 0.25), y: Math.floor(rows * 0.73) },
+              { x: Math.floor(cols * 0.46), y: Math.floor(rows * 0.69) },
+              { x: Math.floor(cols * 0.68), y: Math.floor(rows * 0.75) },
+              { x: Math.floor(cols * 0.88), y: Math.floor(rows * 0.71) }
+            ], Math.max(3, Math.floor(cols * 0.018)), "water", 0.98);
+            scatterClusters(rectRatio(0.12, 0.80, 0.70, 0.08), "algae", 8, 1, 2, 0.34);
+            scatterClusters(rectRatio(0.10, 0.56, 0.82, 0.18), "rock", 9, 2, 3, 0.62);
+          }
+        },
+        {
+          title: "火山裂谷",
+          buttonSubtitle: "熔岩口、灰烬与岩石坡面",
+          subtitle: "中心火山和流动熔岩已经成形，你可以继续引水降温、改造喷发路径，或者把它做成别的地貌。",
+          starterMaterial: "rock",
+          tags: ["探索模式", "火山地貌", "高温区域"],
+          cards: [
+            { label: "环境结构", detail: "火山锥、熔岩通道、灰烬和岩层", ratio: 0.88 },
+            { label: "推荐玩法", detail: "引水冷却、堆墙导流、做新火山口", ratio: 0.74 },
+            { label: "可用材料", detail: "完整物质面板均可使用", ratio: 1 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("rock", 0.77, 0.06, 1);
+            fillTerrainBand("ash", 0.70, 0.03, 0.52, 0.16, 0.84);
+            fillCone(0.52, 0.88, 0.20, 0.30, "rock", 1);
+            fillEllipse(cols * 0.52, rows * 0.35, Math.max(7, Math.floor(cols * 0.05)), Math.max(3, Math.floor(rows * 0.03)), "lava", 0.98);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.52), y: Math.floor(rows * 0.36) },
+              { x: Math.floor(cols * 0.54), y: Math.floor(rows * 0.49) },
+              { x: Math.floor(cols * 0.62), y: Math.floor(rows * 0.64) },
+              { x: Math.floor(cols * 0.76), y: Math.floor(rows * 0.82) }
+            ], Math.max(3, Math.floor(cols * 0.018)), "lava", 0.96);
+            fillEllipse(cols * 0.52, rows * 0.28, Math.max(10, Math.floor(cols * 0.07)), Math.max(3, Math.floor(rows * 0.04)), "smoke", 0.34);
+            scatterClusters(rectRatio(0.14, 0.60, 0.72, 0.18), "rock", 12, 2, 4, 0.7);
+            scatterClusters(rectRatio(0.28, 0.68, 0.38, 0.12), "ash", 10, 2, 3, 0.48);
+          }
+        },
+        {
+          title: "湿地河湾",
+          buttonSubtitle: "浅河、泥土与密集植被",
+          subtitle: "这是一张水网和植物都更丰富的自然地图，适合做引流、扩林、造岛，或者测试生长反应。",
+          starterMaterial: "plant",
+          tags: ["探索模式", "湿地生态", "高可塑性"],
+          cards: [
+            { label: "环境结构", detail: "河道、滩地、藻层和湿土植被", ratio: 0.86 },
+            { label: "推荐玩法", detail: "开新河、造岛、观察植物扩张", ratio: 0.7 },
+            { label: "可用材料", detail: "完整物质面板均可使用", ratio: 1 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("soil", 0.74, 0.06, 0.94);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.08), y: Math.floor(rows * 0.60) },
+              { x: Math.floor(cols * 0.22), y: Math.floor(rows * 0.67) },
+              { x: Math.floor(cols * 0.43), y: Math.floor(rows * 0.61) },
+              { x: Math.floor(cols * 0.63), y: Math.floor(rows * 0.70) },
+              { x: Math.floor(cols * 0.88), y: Math.floor(rows * 0.64) }
+            ], Math.max(4, Math.floor(cols * 0.022)), "water", 0.96);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.34), y: Math.floor(rows * 0.58) },
+              { x: Math.floor(cols * 0.40), y: Math.floor(rows * 0.70) },
+              { x: Math.floor(cols * 0.48), y: Math.floor(rows * 0.82) }
+            ], Math.max(3, Math.floor(cols * 0.016)), "water", 0.9);
+            scatterClusters(rectRatio(0.10, 0.60, 0.76, 0.18), "plant", 15, 2, 4, 0.74);
+            scatterClusters(rectRatio(0.14, 0.68, 0.70, 0.12), "root", 9, 2, 3, 0.44);
+            scatterClusters(rectRatio(0.12, 0.60, 0.76, 0.18), "algae", 12, 1, 2, 0.32);
+            scatterClusters(rectRatio(0.16, 0.64, 0.66, 0.12), "worm", 8, 1, 2, 0.36);
+            scatterClusters(rectRatio(0.12, 0.58, 0.76, 0.14), "seed", 10, 1, 2, 0.4);
+          }
+        },
+        {
+          title: "海滩潮间带",
+          buttonSubtitle: "海水、沙滩、沙丘与滨海植被",
+          subtitle: "浅海从右侧推进，潮间带由湿沙和潮池组成，内陆侧有沙丘、少量土壤和耐盐植被，适合观察水沙交界与植物扩张。",
+          starterMaterial: "sand",
+          tags: ["探索模式", "海岸地貌", "水沙交界", "潮池生态"],
+          cards: [
+            { label: "现实分布", detail: "右侧浅海，中央潮间带，左侧沙丘和滨海植物", ratio: 0.88 },
+            { label: "关键元素", detail: "水、沙、岩石潮池、藻类、少量土壤和植物", ratio: 0.78 },
+            { label: "推荐玩法", detail: "筑堤、造潮池、观察水侵蚀沙丘与藻类扩散", ratio: 0.72 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("sand", 0.66, 0.06, 1);
+            fillTerrainBand("soil", 0.82, 0.025, 0.28, 0.02, 0.42);
+            fillRect(rectRatio(0.55, 0.70, 0.45, 0.24), "water", 0.96);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.42), y: Math.floor(rows * 0.67) },
+              { x: Math.floor(cols * 0.53), y: Math.floor(rows * 0.71) },
+              { x: Math.floor(cols * 0.66), y: Math.floor(rows * 0.68) },
+              { x: Math.floor(cols * 0.84), y: Math.floor(rows * 0.73) },
+              { x: Math.floor(cols * 0.98), y: Math.floor(rows * 0.70) }
+            ], Math.max(2, Math.floor(cols * 0.012)), "water", 0.72);
+            fillEllipse(cols * 0.34, rows * 0.72, Math.max(5, Math.floor(cols * 0.045)), Math.max(2, Math.floor(rows * 0.018)), "water", 0.82);
+            fillEllipse(cols * 0.34, rows * 0.72, Math.max(3, Math.floor(cols * 0.026)), Math.max(1, Math.floor(rows * 0.012)), "algae", 0.32);
+            fillEllipse(cols * 0.18, rows * 0.61, Math.max(12, Math.floor(cols * 0.11)), Math.max(5, Math.floor(rows * 0.05)), "sand", 0.9);
+            scatterClusters(rectRatio(0.06, 0.58, 0.26, 0.14), "plant", 8, 2, 4, 0.5);
+            scatterClusters(rectRatio(0.06, 0.70, 0.34, 0.12), "root", 6, 1, 3, 0.34);
+            scatterClusters(rectRatio(0.24, 0.63, 0.34, 0.13), "rock", 9, 1, 3, 0.58);
+            scatterClusters(rectRatio(0.50, 0.70, 0.46, 0.16), "algae", 12, 1, 2, 0.26);
+          }
+        },
+        {
+          title: "热带雨林",
+          buttonSubtitle: "密林、湿土、水网与活跃生物",
+          subtitle: "厚土层和密集根系支撑高覆盖植物，蜿蜒溪流贯穿林地，藻类、种子和小型生物分布在湿润区域，呈现高水分高生物量环境。",
+          starterMaterial: "rain",
+          tags: ["探索模式", "热带生态", "高湿度", "高生物量"],
+          cards: [
+            { label: "现实分布", detail: "厚土层、树冠层、根系层、溪流和湿润生物带", ratio: 0.9 },
+            { label: "关键元素", detail: "水、雨、土、植物、根系、种子、藻类、小型生物", ratio: 0.86 },
+            { label: "推荐玩法", detail: "改变水路、制造林窗、观察植物和生物扩张", ratio: 0.76 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("soil", 0.64, 0.05, 0.97);
+            fillTerrainBand("root", 0.73, 0.035, 0.38, 0.08, 0.92);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.05), y: Math.floor(rows * 0.57) },
+              { x: Math.floor(cols * 0.19), y: Math.floor(rows * 0.62) },
+              { x: Math.floor(cols * 0.36), y: Math.floor(rows * 0.58) },
+              { x: Math.floor(cols * 0.55), y: Math.floor(rows * 0.67) },
+              { x: Math.floor(cols * 0.76), y: Math.floor(rows * 0.61) },
+              { x: Math.floor(cols * 0.94), y: Math.floor(rows * 0.66) }
+            ], Math.max(4, Math.floor(cols * 0.02)), "water", 0.88);
+            scatterClusters(rectRatio(0.06, 0.38, 0.88, 0.24), "plant", 32, 2, 6, 0.78);
+            scatterClusters(rectRatio(0.08, 0.56, 0.84, 0.20), "root", 18, 2, 4, 0.48);
+            scatterClusters(rectRatio(0.10, 0.45, 0.80, 0.26), "seed", 22, 1, 2, 0.48);
+            scatterClusters(rectRatio(0.08, 0.58, 0.84, 0.18), "algae", 18, 1, 2, 0.28);
+            scatterClusters(rectRatio(0.12, 0.62, 0.76, 0.14), "worm", 12, 1, 2, 0.38);
+            scatterClusters(rectRatio(0.16, 0.42, 0.68, 0.22), "bug", 14, 1, 2, 0.32);
+            fillRect(rectRatio(0.10, 0.04, 0.80, 0.08), "rain", 0.05);
+          }
+        },
+        {
+          title: "山谷大坝",
+          buttonSubtitle: "高水位水库、坝体与下游河道",
+          subtitle: "左侧水库水位高，中央岩石与金属构成坝体，右侧下游河道较低并带有沉积沙土，适合测试放水、溃坝和沉积物迁移。",
+          starterMaterial: "water",
+          tags: ["探索模式", "工程地貌", "水位差", "沉积物"],
+          cards: [
+            { label: "现实分布", detail: "上游深水库、中央坝体、下游低水位河道", ratio: 0.88 },
+            { label: "关键元素", detail: "岩石坝基、金属闸门、水库、沙土沉积和岸坡植物", ratio: 0.82 },
+            { label: "推荐玩法", detail: "开闸引流、削弱坝体、观察冲刷与沉积", ratio: 0.76 }
+          ],
+          buildScene: function () {
+            var dam = rectRatio(0.48, 0.42, 0.07, 0.42);
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("rock", 0.82, 0.04, 1);
+            fillTerrainBand("soil", 0.76, 0.035, 0.62);
+            fillRect(rectRatio(0.06, 0.48, 0.42, 0.31), "water", 0.96);
+            fillRect(rectRatio(0.08, 0.74, 0.35, 0.08), "sand", 0.35);
+            fillRect(dam, "rock", 1);
+            fillRect(rectRatio(0.505, 0.47, 0.018, 0.29), "metal", 0.95);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.54), y: Math.floor(rows * 0.78) },
+              { x: Math.floor(cols * 0.64), y: Math.floor(rows * 0.82) },
+              { x: Math.floor(cols * 0.78), y: Math.floor(rows * 0.80) },
+              { x: Math.floor(cols * 0.94), y: Math.floor(rows * 0.84) }
+            ], Math.max(3, Math.floor(cols * 0.016)), "water", 0.84);
+            fillRect(rectRatio(0.55, 0.83, 0.40, 0.08), "sand", 0.36);
+            scatterClusters(rectRatio(0.58, 0.68, 0.32, 0.13), "plant", 9, 1, 3, 0.46);
+            scatterClusters(rectRatio(0.12, 0.42, 0.30, 0.08), "algae", 10, 1, 2, 0.24);
+            scatterClusters(rectRatio(0.42, 0.55, 0.16, 0.24), "rock", 8, 2, 4, 0.72);
+          }
+        },
+        {
+          title: "冰蚀峡湾",
+          buttonSubtitle: "深水峡湾、陡峭岩壁与冰雪坡面",
+          subtitle: "中央是狭长深水海湾，两侧为陡峭岩壁和冰蚀山坡，高处有冰雪覆盖，低处只有少量耐寒植被，适合模拟崩塌、融冰和海水倒灌。",
+          starterMaterial: "ice",
+          tags: ["探索模式", "峡湾地貌", "冰水系统", "陡峭岩壁"],
+          cards: [
+            { label: "现实分布", detail: "中央深水，两侧高岩壁，山顶冰雪，低坡稀疏植被", ratio: 0.9 },
+            { label: "关键元素", detail: "岩石、深水、冰块、少量土壤和寒带植物", ratio: 0.82 },
+            { label: "推荐玩法", detail: "融冰造瀑布、削坡制造崩塌、改造峡湾水道", ratio: 0.74 }
+          ],
+          buildScene: function () {
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillCone(0.18, 0.94, 0.28, 0.18, "rock", 1);
+            fillCone(0.82, 0.94, 0.30, 0.16, "rock", 1);
+            fillRect(rectRatio(0.36, 0.56, 0.28, 0.38), "water", 0.98);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.42), y: Math.floor(rows * 0.34) },
+              { x: Math.floor(cols * 0.45), y: Math.floor(rows * 0.48) },
+              { x: Math.floor(cols * 0.49), y: Math.floor(rows * 0.58) }
+            ], Math.max(2, Math.floor(cols * 0.012)), "water", 0.64);
+            fillEllipse(cols * 0.18, rows * 0.22, Math.max(14, Math.floor(cols * 0.12)), Math.max(4, Math.floor(rows * 0.045)), "ice", 0.88);
+            fillEllipse(cols * 0.82, rows * 0.20, Math.max(15, Math.floor(cols * 0.13)), Math.max(4, Math.floor(rows * 0.05)), "ice", 0.88);
+            fillEllipse(cols * 0.50, rows * 0.51, Math.max(8, Math.floor(cols * 0.06)), Math.max(2, Math.floor(rows * 0.02)), "ice", 0.38);
+            scatterClusters(rectRatio(0.20, 0.62, 0.16, 0.18), "soil", 5, 1, 3, 0.28);
+            scatterClusters(rectRatio(0.64, 0.62, 0.16, 0.18), "soil", 5, 1, 3, 0.28);
+            scatterClusters(rectRatio(0.18, 0.58, 0.20, 0.20), "plant", 6, 1, 2, 0.32);
+            scatterClusters(rectRatio(0.62, 0.58, 0.20, 0.20), "plant", 6, 1, 2, 0.32);
+            scatterClusters(rectRatio(0.08, 0.44, 0.84, 0.28), "rock", 16, 2, 4, 0.64);
+          }
+        }
+      ];
+
+      var LEVELS = [
+        {
+          title: "第 1 关 森林救火",
+          subtitle: "草地覆盖画布约三分之二，土块以不规则条带分布（约占草地五分之一）。开局会随机点燃多处植物，用水/雨降温控火。",
+          tags: ["灭火", "控火", "草地覆盖", "条带土块", "随机起火"],
+          allowedMaterials: ["water", "rain", "soil"],
+          starterMaterial: "water",
+          materialBudget: {
+            soil: { ratio: 0.009, min: 260, max: 1200 }
+          },
+          tuning: {
+            fireSpreadMultiplier: 0.22,
+            fireLifeMultiplier: 0.32,
+            emberLifeMultiplier: 0.32,
+            fireEmberMultiplier: 0.22,
+            fireSmokeMultiplier: 0.34,
+            emberSmokeMultiplier: 0.32,
+            waterFlowMultiplier: 2.4,
+            waterFallMultiplier: 1.8,
+            disablePlantGravity: true,
+            disableSoilGravity: true,
+            initialIgnitionCount: 2,
+            initialIgnitionMinDistance: 12,
+            initialIgnitionAttempts: 1800
+          },
+          buildLayout: function () {
+            return createLayout([
+              // 草地区放在屏幕可用高度（去掉底部岩层）的中心位置
+              { id: "grove", label: "草地区", color: "rgba(124, 220, 134, 0.9)", rect: rectRatio(0, 0.14, 1, 0.66) },
+              { id: "waterline", label: "操作区", color: "rgba(88, 180, 255, 0.85)", rect: rectRatio(0, 0, 1, 0.94) }
+            ]);
+          },
+          setup: function (layout, runtime) {
+            var grove = layout.zoneMap.grove.rect;
+            var tuning = getActiveLevelTuning() || {};
+            var ignitionCount = Math.max(1, Math.round(tuning.initialIgnitionCount || 2));
+            var minDist = Math.max(4, Math.round(tuning.initialIgnitionMinDistance || 10));
+            var attempts = Math.max(200, Math.round(tuning.initialIgnitionAttempts || 1000));
+            var chosen = [];
+            var placed = 0;
+            var i;
+            var x;
+            var y;
+            var ok;
+            var dx;
+            var dy;
+            var d2;
+            var plantBeforeIgnition;
+            var targetSoil;
+            var soilCount;
+            var stripAttempt;
+
+            fillRect(rectRatio(0, 0.94, 1, 0.06), "rock", 1);
+            fillTerrainBand("rock", 0.92, 0.02, 1);
+
+            function countTypeInRect(rect, type) {
+              var cx;
+              var cy;
+              var count = 0;
+              var p;
+              for (cy = rect.y; cy < rect.y + rect.h; cy += 1) {
+                for (cx = rect.x; cx < rect.x + rect.w; cx += 1) {
+                  p = getCell(cx, cy);
+                  if (p && p.type === type) {
+                    count += 1;
+                  }
+                }
+              }
+              return count;
+            }
+
+            // 草地覆盖画布约三分之二（草地用 plant 表示；本关植物不受重力）
+            fillRect(grove, "plant", 1);
+
+            // 土块总面积约为草地的五分之一，并呈不规则条带分布
+            targetSoil = Math.max(1, Math.floor(grove.w * grove.h * 0.20));
+            soilCount = 0;
+            stripAttempt = 0;
+            while (soilCount < targetSoil && stripAttempt < 36) {
+              var points = [];
+              var segments = randomRange(3, 6);
+              var px = randomRange(grove.x + 2, grove.x + grove.w - 3);
+              var py = randomRange(grove.y + 2, grove.y + grove.h - 3);
+              var s;
+              var stepX;
+              var stepY;
+              points.push({ x: px, y: py });
+              for (s = 0; s < segments; s += 1) {
+                stepX = randomRange(-Math.floor(grove.w * 0.16), Math.floor(grove.w * 0.16));
+                stepY = randomRange(-Math.floor(grove.h * 0.10), Math.floor(grove.h * 0.10));
+                px = clamp(px + stepX, grove.x + 1, grove.x + grove.w - 2);
+                py = clamp(py + stepY, grove.y + 1, grove.y + grove.h - 2);
+                points.push({ x: px, y: py });
+              }
+              drawMaterialPath(points, randomRange(2, 5), "soil", 1);
+              soilCount = countTypeInRect(grove, "soil");
+              stripAttempt += 1;
+            }
+
+            // 记录点火前草地（植物）数量，用于“保住一半植物”的胜利判定
+            plantBeforeIgnition = countTypeInRect(grove, "plant");
+
+            // 开局随机点燃多处植物（全图散点，避免过度聚集）
+            for (i = 0; i < attempts && placed < ignitionCount; i += 1) {
+              x = randomRange(grove.x, grove.x + grove.w - 1);
+              y = randomRange(grove.y, grove.y + grove.h - 1);
+              if (!inBounds(x, y)) {
+                continue;
+              }
+              if (!getCell(x, y) || getCell(x, y).type !== "plant") {
+                continue;
+              }
+              ok = true;
+              for (var j = 0; j < chosen.length; j += 1) {
+                dx = chosen[j].x - x;
+                dy = chosen[j].y - y;
+                d2 = (dx * dx) + (dy * dy);
+                if (d2 < (minDist * minDist)) {
+                  ok = false;
+                  break;
+                }
+              }
+              if (!ok) {
+                continue;
+              }
+              chosen.push({ x: x, y: y });
+              igniteCell(x, y, "normal");
+              if (chance(0.35)) {
+                spawnParticleNearby(x, y, "smoke", 3);
+              }
+              placed += 1;
+            }
+
+            // 过关要求：保住至少一半植物
+            runtime.targets.plants = Math.max(1, Math.floor(plantBeforeIgnition * 0.5));
+          },
+          evaluate: function (stats, runtime) {
+            var fireLeft = getGlobalTypeCount(stats, ["fire", "ember"]);
+            var plantLeft = getZoneTypeCount(stats, "grove", "plant");
+            var plantRatio = runtime.targets.plants > 0 ? plantLeft / runtime.targets.plants : 1;
+            return {
+              complete: fireLeft <= 1 && plantLeft >= runtime.targets.plants,
+              bannerTitle: "林火扑灭",
+              bannerBody: "树林已经稳住了，继续去做一次轻松的降温练习。",
+              celebrationTitle: "灭火成功",
+              celebrationBody: "第一关顺顺利利过了，保持这个节奏就很好。",
+              objectives: [
+                {
+                  done: fireLeft <= 1,
+                  label: "把火势压到几乎熄灭",
+                  detail: "剩余 " + fireLeft,
+                  ratio: fireLeft <= 1 ? 1 : clampRatio(1 - fireLeft / 64)
+                },
+                {
+                  done: plantLeft >= runtime.targets.plants,
+                  label: "保住至少一半植物",
+                  detail: plantLeft + " / " + runtime.targets.plants,
+                  ratio: clampRatio(plantRatio)
+                }
+              ]
+            };
+          }
+        },
+        {
+          title: "第 2 关 冷却熔岩",
+          subtitle: "把熔岩池慢慢冷却成岩石，留一点残余也没关系。",
+          tags: ["冷却", "凝固", "火山盆地"],
+          allowedMaterials: ["water", "ice", "rain"],
+          starterMaterial: "water",
+          tuning: {
+            iceLavaReactionMultiplier: 10
+          },
+          buildLayout: function () {
+            return createLayout([
+              { id: "basin", label: "冷却池", color: "rgba(255, 160, 70, 0.9)", rect: rectRatio(0.31, 0.53, 0.34, 0.16) },
+              { id: "spill", label: "高温区", color: "rgba(255, 220, 110, 0.75)", rect: rectRatio(0.18, 0.30, 0.56, 0.40) }
+            ]);
+          },
+          setup: function (layout, runtime) {
+            var basin = layout.zoneMap.basin.rect;
+            var wall = expandRect(basin, 6, 5);
+            fillRect(rectRatio(0, 0.92, 1, 0.08), "rock", 1);
+            fillTerrainBand("rock", 0.79, 0.06, 1);
+            fillTerrainBand("ash", 0.70, 0.04, 0.44, 0.12, 0.88);
+            fillCone(0.50, 0.89, 0.22, 0.31, "rock", 1);
+            outlineRect(wall, "rock", 3);
+            clearRect(basin);
+            fillRect(basin, "lava", 0.78);
+            drawMaterialPath([
+              { x: Math.floor(cols * 0.50), y: Math.floor(rows * 0.34) },
+              { x: Math.floor(cols * 0.52), y: Math.floor(rows * 0.46) },
+              { x: Math.floor(cols * 0.56), y: Math.floor(rows * 0.56) }
+            ], Math.max(3, Math.floor(cols * 0.018)), "lava", 0.95);
+            fillEllipse(cols * 0.50, rows * 0.29, Math.max(9, Math.floor(cols * 0.06)), Math.max(3, Math.floor(rows * 0.03)), "smoke", 0.34);
+            fillEllipse(cols * 0.68, rows * 0.77, Math.max(8, Math.floor(cols * 0.08)), Math.max(4, Math.floor(rows * 0.05)), "ice", 0.95);
+            fillEllipse(cols * 0.24, rows * 0.79, Math.max(7, Math.floor(cols * 0.07)), Math.max(4, Math.floor(rows * 0.05)), "ice", 0.92);
+            fillRect(rectRatio(0.44, 0.77, 0.10, 0.05), "ice", 0.88);
+            scatterClusters(rectRatio(0.16, 0.62, 0.70, 0.18), "rock", 12, 2, 4, 0.64);
+            runtime.targets.rock = Math.max(72, Math.floor(basin.w * basin.h * 0.34));
+            runtime.targets.lavaMax = Math.max(18, Math.floor(basin.w * basin.h * 0.18));
+          },
+          evaluate: function (stats, runtime) {
+            var rockCount = getZoneTypeCount(stats, "basin", "rock");
+            var lavaCount = getZoneTypeCount(stats, "basin", "lava");
+            return {
+              complete: rockCount >= runtime.targets.rock && lavaCount <= runtime.targets.lavaMax,
+              bannerTitle: "熔岩已经凝固",
+              bannerBody: "降温做得很稳，下一关只要把封堵区炸开一个缺口就行。",
+              celebrationTitle: "冷却完成",
+              celebrationBody: "温度控制得很好，这一关也拿下了。",
+              objectives: [
+                {
+                  done: rockCount >= runtime.targets.rock,
+                  label: "让冷却池生成足够岩石",
+                  detail: rockCount + " / " + runtime.targets.rock,
+                  ratio: clampRatio(rockCount / runtime.targets.rock)
+                },
+                {
+                  done: lavaCount <= runtime.targets.lavaMax,
+                  label: "控制残余熔岩数量",
+                  detail: lavaCount + " / " + runtime.targets.lavaMax,
+                  ratio: clampRatio(1 - lavaCount / Math.max(1, runtime.targets.lavaMax * 3))
+                }
+              ]
+            };
+          }
+        },
+        {
+          title: "第 3 关 定向爆破",
+          subtitle: "用火药或炸药炸开封堵区，打出一个明显缺口就能过关。",
+          tags: ["爆破", "清障", "峡谷工地"],
+          allowedMaterials: ["fire", "gunpowder", "explosive"],
+          starterMaterial: "explosive",
+          buildLayout: function () {
+            return createLayout([
+              { id: "breach", label: "爆破口", color: "rgba(255, 118, 84, 0.9)", rect: rectRatio(0.45, 0.30, 0.14, 0.30) },
+              { id: "staging", label: "布药区", color: "rgba(255, 210, 120, 0.75)", rect: rectRatio(0.29, 0.22, 0.28, 0.46) }
+            ]);
+          },
+          setup: function (layout, runtime) {
+            var breach = layout.zoneMap.breach.rect;
+            fillRect(rectRatio(0, 0.92, 1, 0.08), "rock", 1);
+            fillTerrainBand("rock", 0.79, 0.05, 1);
+            fillTerrainBand("soil", 0.71, 0.04, 0.36, 0.10, 0.90);
+            outlineRect(rectRatio(0.22, 0.18, 0.52, 0.50), "rock", 3);
+            fillRect(breach, "soil", 0.64);
+            fillRect(expandRect(breach, 4, 3), "sand", 0.22);
+            fillRect(rectRatio(0.22, 0.61, 0.14, 0.08), "rock", 0.96);
+            fillRect(rectRatio(0.30, 0.50, 0.10, 0.06), "gunpowder", 0.36);
+            fillRect(rectRatio(0.35, 0.43, 0.08, 0.05), "explosive", 0.18);
+            scatterClusters(rectRatio(0.20, 0.60, 0.56, 0.18), "rock", 10, 2, 4, 0.58);
+            scatterClusters(rectRatio(0.26, 0.36, 0.22, 0.18), "ash", 8, 2, 3, 0.28);
+            runtime.targets.softLeft = Math.max(36, Math.floor(breach.w * breach.h * 0.28));
+          },
+          evaluate: function (stats, runtime) {
+            var softLeft = getZoneTypeCount(stats, "breach", ["soil", "sand", "plant", "gunpowder", "explosive"]);
+            var explosions = runtime.counters.explosions;
+            return {
+              complete: softLeft <= runtime.targets.softLeft && explosions >= 1,
+              bannerTitle: "爆破任务完成",
+              bannerBody: "缺口已经打开，最后只要轻松守住花园就能全部通关。",
+              celebrationTitle: "爆破成功",
+              celebrationBody: "开口打出来了，距离全通只差最后一步。",
+              objectives: [
+                {
+                  done: explosions >= 1,
+                  label: "至少触发一次有效爆炸",
+                  detail: explosions + " 次",
+                  ratio: clampRatio(explosions / 1)
+                },
+                {
+                  done: softLeft <= runtime.targets.softLeft,
+                  label: "清理爆破口中的软质阻挡",
+                  detail: "剩余 " + softLeft + " / " + runtime.targets.softLeft,
+                  ratio: clampRatio(1 - softLeft / Math.max(1, runtime.targets.softLeft * 5))
+                }
+              ]
+            };
+          }
+        },
+        {
+          title: "第 4 关 酸蚀隔离",
+          subtitle: "酸液会腐蚀薄弱区域，先封堵通道，再稳稳守住花园。",
+          tags: ["防守", "隔离酸液", "山谷花园"],
+          allowedMaterials: ["rock", "metal"],
+          starterMaterial: "metal",
+          buildLayout: function () {
+            return createLayout([
+              { id: "reservoir", label: "酸液池", color: "rgba(162, 255, 92, 0.9)", rect: rectRatio(0.08, 0.19, 0.22, 0.18) },
+              { id: "choke", label: "封堵口", color: "rgba(255, 214, 120, 0.85)", rect: rectRatio(0.45, 0.49, 0.12, 0.10) },
+              { id: "garden", label: "花园", color: "rgba(102, 226, 141, 0.9)", rect: rectRatio(0.64, 0.42, 0.24, 0.24) }
+            ]);
+          },
+          setup: function (layout, runtime) {
+            var reservoir = layout.zoneMap.reservoir.rect;
+            var choke = layout.zoneMap.choke.rect;
+            var garden = layout.zoneMap.garden.rect;
+            var corridor = rectRatio(0.28, 0.50, 0.42, 0.10);
+            fillRect(rectRatio(0, 0.92, 1, 0.08), "rock", 1);
+            fillTerrainBand("soil", 0.75, 0.05, 0.94);
+            fillTerrainBand("rock", 0.92, 0.02, 1);
+            outlineRect(expandRect(reservoir, 4, 4), "rock", 3);
+            outlineRect(expandRect(corridor, 2, 2), "rock", 2);
+            clearRect(corridor);
+            fillRect(reservoir, "acid", 0.82);
+            fillRect(choke, "soil", 1);
+            fillRect(expandRect(garden, 6, 2), "soil", 0.22);
+            scatterClusters(garden, "plant", 15, 2, 4, 0.74);
+            scatterClusters(expandRect(garden, 4, 2), "root", 10, 2, 3, 0.44);
+            scatterClusters(expandRect(garden, 4, 2), "seed", 10, 1, 2, 0.28);
+            fillEllipse(cols * 0.79, rows * 0.66, Math.max(8, Math.floor(cols * 0.08)), Math.max(4, Math.floor(rows * 0.05)), "water", 0.94);
+            fillEllipse(cols * 0.79, rows * 0.65, Math.max(4, Math.floor(cols * 0.05)), Math.max(2, Math.floor(rows * 0.024)), "algae", 0.26);
+            scatterClusters(rectRatio(0.64, 0.61, 0.22, 0.10), "worm", 7, 1, 2, 0.30);
+            runtime.targets.gardenPlants = Math.max(90, Math.floor(garden.w * garden.h * 0.18));
+            runtime.targets.safeHold = 7.5;
+            runtime.safeHold = 0;
+          },
+          evaluate: function (stats, runtime) {
+            var acidInGarden = getZoneTypeCount(stats, "garden", "acid");
+            var plants = getZoneTypeCount(stats, "garden", "plant");
+            if (acidInGarden === 0 && plants >= runtime.targets.gardenPlants) {
+              runtime.safeHold += stats.deltaSeconds;
+            } else {
+              runtime.safeHold = 0;
+            }
+            return {
+              complete: runtime.safeHold >= runtime.targets.safeHold,
+              bannerTitle: "全任务完成",
+              bannerBody: "你已经完成全部闯关目标。现在可以继续沙盒实验，或反复挑战任意关卡。",
+              celebrationTitle: "全部通关",
+              celebrationBody: "这次闯关很稳，四关都顺利拿下了。",
+              objectives: [
+                {
+                  done: acidInGarden === 0,
+                  label: "不让酸液进入花园",
+                  detail: acidInGarden === 0 ? "花园安全" : "侵入 " + acidInGarden,
+                  ratio: acidInGarden === 0 ? 1 : 0
+                },
+                {
+                  done: plants >= runtime.targets.gardenPlants,
+                  label: "保住足够多的植物",
+                  detail: plants + " / " + runtime.targets.gardenPlants,
+                  ratio: clampRatio(plants / runtime.targets.gardenPlants)
+                },
+                {
+                  done: runtime.safeHold >= runtime.targets.safeHold,
+                  label: "连续稳定防守一段时间",
+                  detail: runtime.safeHold.toFixed(1) + " / " + runtime.targets.safeHold + " 秒",
+                  ratio: clampRatio(runtime.safeHold / runtime.targets.safeHold)
+                }
+              ]
+            };
+          }
+        }
+      ];
+
+      function idx(x, y) {
+        return y * cols + x;
+      }
+
+      function inBounds(x, y) {
+        return x >= 0 && x < cols && y >= 0 && y < rows;
+      }
+
+      function getCell(x, y) {
+        if (!inBounds(x, y)) {
+          return null;
+        }
+        return grid[idx(x, y)];
+      }
+
+      function setCell(x, y, particle) {
+        var index;
+        var previous;
+        if (!inBounds(x, y)) {
+          return;
+        }
+        index = idx(x, y);
+        previous = grid[index];
+        if (!previous && particle) {
+          particleCount += 1;
+        } else if (previous && !particle) {
+          particleCount -= 1;
+        }
+        grid[index] = particle;
+      }
+
+      function clearCell(x, y) {
+        setCell(x, y, null);
+      }
+
+      function createParticle(type, overrides) {
+        var mat = MATERIALS[type];
+        var baseLife;
+        var baseTemp;
+        overrides = overrides || {};
+        baseLife = overrides.life !== undefined ? overrides.life : (mat.life ? randomRange(mat.life[0], mat.life[1]) : Infinity);
+        baseTemp = overrides.temp !== undefined ? overrides.temp : (mat.temp || 0);
+        if (type === "fire" && overrides.life === undefined && isFiniteNumber(baseLife)) {
+          baseLife = Math.max(6, Math.round(getLevelScaledValue(baseLife, "fireLifeMultiplier")));
+        } else if (type === "ember" && overrides.life === undefined && isFiniteNumber(baseLife)) {
+          baseLife = Math.max(8, Math.round(getLevelScaledValue(baseLife, "emberLifeMultiplier")));
+        }
+        return {
+          type: type,
+          updated: -1,
+          age: 0,
+          seed: Math.random(),
+          life: baseLife,
+          maxLife: isFiniteNumber(baseLife) ? baseLife : 1,
+          temp: baseTemp,
+          maxTemp: baseTemp || 1
+        };
+      }
+
+      function chooseCellSize(width, height) {
+        var area = width * height;
+        if (area > 1900000) {
+          return 5;
+        }
+        if (area > 1200000) {
+          return 4;
+        }
+        return 3;
+      }
+
+      function allocateBuffer() {
+        imageData = ctx.createImageData(cols, rows);
+        pixelBuffer = imageData.data;
+      }
+
+      function resizeSimulation() {
+        var paneWidth = ui.pane.clientWidth;
+        var paneHeight = ui.pane.clientHeight;
+        var oldGrid = grid;
+        var oldCols = cols;
+        var oldRows = rows;
+        var x;
+        var y;
+        var particle;
+        var nx;
+        var ny;
+
+        cellSize = chooseCellSize(paneWidth, paneHeight);
+        cols = Math.max(100, Math.floor(paneWidth / cellSize));
+        rows = Math.max(80, Math.floor(paneHeight / cellSize));
+
+        ui.canvas.width = cols;
+        ui.canvas.height = rows;
+        grid = [];
+        particleCount = 0;
+
+        for (y = 0; y < cols * rows; y += 1) {
+          grid.push(null);
+        }
+        allocateBuffer();
+
+        if (oldGrid && oldGrid.length) {
+          for (y = 0; y < oldRows; y += 1) {
+            for (x = 0; x < oldCols; x += 1) {
+              particle = oldGrid[y * oldCols + x];
+              if (!particle) {
+                continue;
+              }
+              nx = clamp(Math.floor((x / Math.max(1, oldCols)) * cols), 0, cols - 1);
+              ny = clamp(Math.floor((y / Math.max(1, oldRows)) * rows), 0, rows - 1);
+              if (!getCell(nx, ny)) {
+                setCell(nx, ny, particle);
+              }
+            }
+          }
+        }
+
+        if (mode === "challenge" && activeLevel) {
+          activeLayout = activeLevel.buildLayout();
+          lastStatsFrame = -1;
+        }
+      }
+
+      function buildMaterialButtons() {
+        var i;
+        ui.materialGrid.innerHTML = "";
+        for (i = 0; i < MATERIAL_ORDER.length; i += 1) {
+          (function (type) {
+            var mat = MATERIALS[type];
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "material-btn";
+            button.setAttribute("data-type", type);
+            button.innerHTML =
+              '<span class="swatch" style="background:linear-gradient(135deg,' + mat.color + "," + (mat.accent || mat.color) + ');"></span>' +
+              '<span class="material-meta">' +
+              '<span class="material-name">' + mat.name + '</span>' +
+              '<span class="material-kind">' + mat.state + "</span>" +
+              "</span>";
+            button.onclick = function () {
+              if (!materialAllowed(type)) {
+                return;
+              }
+              selectedType = type;
+              updateSelectedMaterialUI();
+            };
+            ui.materialGrid.appendChild(button);
+          })(MATERIAL_ORDER[i]);
+        }
+        updateSelectedMaterialUI();
+      }
+
+      function buildExploreMapButtons() {
+        var i;
+        var button;
+        ui.exploreGrid.innerHTML = "";
+        for (i = 0; i < EXPLORE_MAPS.length; i += 1) {
+          button = document.createElement("button");
+          button.type = "button";
+          button.className = "explore-map-btn";
+          button.setAttribute("data-index", String(i));
+          button.innerHTML =
+            "<strong>" + EXPLORE_MAPS[i].title + "</strong>" +
+            "<span>" + EXPLORE_MAPS[i].buttonSubtitle + "</span>";
+          button.onclick = (function (index) {
+            return function () {
+              startExploreMap(index);
+            };
+          })(i);
+          ui.exploreGrid.appendChild(button);
+        }
+        updateExploreMapButtons();
+      }
+
+      function updateExploreMapButtons() {
+        var children = ui.exploreGrid.children;
+        var i;
+        var index;
+        for (i = 0; i < children.length; i += 1) {
+          index = parseInt(children[i].getAttribute("data-index"), 10);
+          children[i].className = mode === "explore" && index === activeExploreIndex ? "explore-map-btn active" : "explore-map-btn";
+        }
+      }
+
+      function updateSelectedMaterialUI() {
+        var mat;
+        var children = ui.materialGrid.children;
+        var i;
+        var type;
+        if (!materialAllowed(selectedType)) {
+          selectedType = firstAllowedMaterial();
+        }
+        mat = MATERIALS[selectedType];
+        ui.materialLabel.innerHTML =
+          mat.name +
+          (mode === "challenge" && levelRuntime && levelRuntime.materialBudgetRemaining && levelRuntime.materialBudgetRemaining[selectedType] !== undefined
+            ? "（剩余 " + levelRuntime.materialBudgetRemaining[selectedType] + "）"
+            : "");
+        for (i = 0; i < children.length; i += 1) {
+          type = children[i].getAttribute("data-type");
+          if (!materialAllowed(type)) {
+            children[i].className = "material-btn disabled";
+          } else {
+            children[i].className = type === selectedType ? "material-btn active" : "material-btn";
+          }
+        }
+        ui.brushPreview.style.borderColor = mat.accent || mat.color;
+      }
+
+      function updateBrushUI() {
+        var label = brushRadius + " px";
+        ui.brushValue.innerHTML = label;
+        ui.brushLabel.innerHTML = label;
+        ui.brushSlider.value = String(brushRadius);
+        ui.brushPreview.style.width = (brushRadius * 2) + "px";
+        ui.brushPreview.style.height = (brushRadius * 2) + "px";
+      }
+
+      function updateHintUI() {
+        if (hintCollapsed) {
+          ui.hintCard.className = "hint-card collapsed";
+          ui.hintTitle.innerHTML = "操作说明已隐藏";
+          ui.hintToggle.innerHTML = "显示说明";
+        } else {
+          ui.hintCard.className = "hint-card";
+          ui.hintTitle.innerHTML = "操作说明";
+          ui.hintToggle.innerHTML = "隐藏说明";
+        }
+      }
+
+      function materialAllowed(type) {
+        if (mode !== "challenge" || !activeLevel) {
+          return true;
+        }
+        if (activeLevel.allowedMaterials.indexOf(type) === -1) {
+          return false;
+        }
+        if (levelRuntime && levelRuntime.materialBudgetRemaining && levelRuntime.materialBudgetRemaining[type] !== undefined) {
+          return levelRuntime.materialBudgetRemaining[type] > 0;
+        }
+        return true;
+      }
+
+      function firstAllowedMaterial() {
+        var list = activeLevel && activeLevel.allowedMaterials ? activeLevel.allowedMaterials : MATERIAL_ORDER;
+        return list[0];
+      }
+
+      function hideMissionBanner() {
+        ui.missionBanner.className = "banner";
+      }
+
+      function hideCelebration() {
+        var sparks;
+        var i;
+        if (celebrationTimer) {
+          window.clearTimeout(celebrationTimer);
+          celebrationTimer = 0;
+        }
+        ui.celebrationBurst.className = "celebration-burst";
+        sparks = ui.celebrationBurst.querySelectorAll(".celebration-spark");
+        for (i = 0; i < sparks.length; i += 1) {
+          sparks[i].remove();
+        }
+      }
+
+      function showCelebration(title, body) {
+        var i;
+        var count = 12;
+        var angle;
+        var distance;
+        var spark;
+        hideCelebration();
+        ui.celebrationTitle.innerHTML = title;
+        ui.celebrationText.innerHTML = body;
+        for (i = 0; i < count; i += 1) {
+          angle = (Math.PI * 2 * i) / count;
+          distance = 56 + (i % 3) * 14;
+          spark = document.createElement("span");
+          spark.className = "celebration-spark";
+          spark.style.setProperty("--dx", Math.round(Math.cos(angle) * distance) + "px");
+          spark.style.setProperty("--dy", Math.round(Math.sin(angle) * distance) + "px");
+          spark.style.setProperty("--spark-delay", (i % 4) * 30 + "ms");
+          spark.style.setProperty("--spark-size", (i % 3 === 0 ? 12 : 9) + "px");
+          ui.celebrationBurst.appendChild(spark);
+        }
+        ui.celebrationBurst.offsetWidth;
+        ui.celebrationBurst.className = "celebration-burst show";
+        celebrationTimer = window.setTimeout(hideCelebration, 1650);
+      }
+
+      function showMissionBanner(title, body) {
+        ui.bannerTitle.innerHTML = title;
+        ui.bannerBody.innerHTML = body;
+        ui.bannerNextBtn.disabled = activeLevelIndex >= LEVELS.length - 1;
+        ui.bannerNextBtn.innerHTML = activeLevelIndex >= LEVELS.length - 1 ? "全部完成" : "进入下一关";
+        ui.missionBanner.className = "banner show";
+      }
+
+      function renderMissionTags(tags) {
+        var html = "";
+        var i;
+        for (i = 0; i < tags.length; i += 1) {
+          html += '<span class="mission-tag">' + tags[i] + "</span>";
+        }
+        ui.missionTags.innerHTML = html;
+      }
+
+      function renderObjectives(objectives) {
+        var html = "";
+        var i;
+        var objective;
+        for (i = 0; i < objectives.length; i += 1) {
+          objective = objectives[i];
+          html +=
+            '<div class="objective-item' + (objective.done ? " done" : "") + '">' +
+              '<div class="objective-line">' +
+                "<strong>" + objective.label + "</strong>" +
+                "<span>" + objective.detail + "</span>" +
+              "</div>" +
+              '<div class="objective-track"><div class="objective-fill" style="width:' + Math.round(clampRatio(objective.ratio) * 100) + '%;"></div></div>' +
+            "</div>";
+        }
+        ui.objectiveList.innerHTML = html;
+      }
+
+      function updateMissionUI() {
+        var tags;
+        var exploreCards;
+        updatePhysicsUI();
+        ui.sandboxModeBtn.className = mode === "sandbox" ? "mode-btn active" : "mode-btn";
+        ui.exploreModeBtn.className = mode === "explore" ? "mode-btn active" : "mode-btn";
+        ui.challengeModeBtn.className = mode === "challenge" ? "mode-btn active" : "mode-btn";
+        ui.clearBtn.innerHTML = mode === "challenge" ? "重置场景" : mode === "explore" ? "重置地图" : "清空画布";
+        ui.explorePanel.className = mode === "explore" ? "explore-panel" : "explore-panel hidden";
+        ui.restartLevelBtn.innerHTML = mode === "explore" ? "重新生成地图" : "重新开始本关";
+        ui.nextLevelBtn.innerHTML = mode === "explore" ? "下一张地图" : "下一关";
+        updateExploreMapButtons();
+
+        if (mode === "sandbox") {
+          ui.missionTitle.innerHTML = "自由沙盒";
+          ui.missionSubtitle.innerHTML = "自由组合材质与反应。准备好后可切换到任务模式挑战预设关卡。";
+          ui.missionMeta.innerHTML = "Sandbox";
+          ui.levelLabel.innerHTML = "沙盒";
+          renderMissionTags(["无限材料", "自由实验", "重力 " + formatScaleValue(getGravityScale()), "反应 " + formatScaleValue(getReactionScale())]);
+          renderObjectives([
+            {
+              done: false,
+              label: "在这里自由实验材质反应",
+              detail: "未启用任务",
+              ratio: 0
+            }
+          ]);
+          ui.restartLevelBtn.disabled = true;
+          ui.nextLevelBtn.disabled = true;
+          return;
+        }
+
+        if (mode === "explore" && activeExploreMap) {
+          exploreCards = activeExploreMap.cards || [];
+          tags = [
+            "全材料开放",
+            "地图可重置",
+            "重力 " + formatScaleValue(getGravityScale()),
+            "反应 " + formatScaleValue(getReactionScale())
+          ].concat(activeExploreMap.tags || []);
+          ui.missionTitle.innerHTML = activeExploreMap.title;
+          ui.missionSubtitle.innerHTML = activeExploreMap.subtitle;
+          ui.missionMeta.innerHTML = "Explore " + (activeExploreIndex + 1) + " / " + EXPLORE_MAPS.length;
+          ui.levelLabel.innerHTML = "探索";
+          renderMissionTags(tags);
+          renderObjectives(exploreCards);
+          ui.restartLevelBtn.disabled = false;
+          ui.nextLevelBtn.disabled = EXPLORE_MAPS.length < 2;
+          return;
+        }
+
+        if (!activeLevel) {
+          ui.missionTitle.innerHTML = "自由沙盒";
+          ui.missionSubtitle.innerHTML = "自由组合材质与反应。准备好后可切换到任务模式挑战预设关卡。";
+          ui.missionMeta.innerHTML = "Sandbox";
+          ui.levelLabel.innerHTML = "沙盒";
+          renderMissionTags(["无限材料", "自由实验", "重力 " + formatScaleValue(getGravityScale()), "反应 " + formatScaleValue(getReactionScale())]);
+          renderObjectives([
+            {
+              done: false,
+              label: "在这里自由实验材质反应",
+              detail: "未启用任务",
+              ratio: 0
+            }
+          ]);
+          ui.restartLevelBtn.disabled = true;
+          ui.nextLevelBtn.disabled = true;
+          return;
+        }
+
+        tags = [
+          "允许材料：" + formatAllowedMaterials(activeLevel.allowedMaterials),
+          "重力 " + formatScaleValue(getGravityScale()),
+          "反应 " + formatScaleValue(getReactionScale())
+        ].concat(activeLevel.tags);
+        ui.missionTitle.innerHTML = activeLevel.title;
+        ui.missionSubtitle.innerHTML = activeLevel.subtitle;
+        ui.missionMeta.innerHTML = "Level " + (activeLevelIndex + 1) + " / " + LEVELS.length;
+        ui.levelLabel.innerHTML = "第 " + (activeLevelIndex + 1) + " 关";
+        renderMissionTags(tags);
+        renderObjectives(activeObjectives);
+        ui.restartLevelBtn.disabled = false;
+        ui.nextLevelBtn.disabled = !(levelRuntime && levelRuntime.completed) || activeLevelIndex >= LEVELS.length - 1;
+      }
+
+      function collectLevelStats() {
+        var zones = activeLayout ? activeLayout.zones : [];
+        var stats = { global: {}, zones: {}, deltaSeconds: 0 };
+        var i;
+        var x;
+        var y;
+        var particle;
+        var zone;
+        var zoneData;
+
+        for (i = 0; i < zones.length; i += 1) {
+          zone = zones[i];
+          stats.zones[zone.id] = {
+            total: zone.rect.w * zone.rect.h,
+            occupied: 0,
+            empty: zone.rect.w * zone.rect.h,
+            types: {}
+          };
+        }
+
+        for (y = 0; y < rows; y += 1) {
+          for (x = 0; x < cols; x += 1) {
+            particle = getCell(x, y);
+            if (!particle) {
+              continue;
+            }
+            stats.global[particle.type] = (stats.global[particle.type] || 0) + 1;
+            for (i = 0; i < zones.length; i += 1) {
+              zone = zones[i];
+              if (x >= zone.rect.x && x < zone.rect.x + zone.rect.w && y >= zone.rect.y && y < zone.rect.y + zone.rect.h) {
+                zoneData = stats.zones[zone.id];
+                zoneData.occupied += 1;
+                zoneData.empty -= 1;
+                zoneData.types[particle.type] = (zoneData.types[particle.type] || 0) + 1;
+              }
+            }
+          }
+        }
+
+        stats.deltaSeconds = levelRuntime ? (currentNow - levelRuntime.lastEvalAt) / 1000 : 0;
+        if (levelRuntime) {
+          levelRuntime.lastEvalAt = currentNow;
+        }
+        return stats;
+      }
+
+      function syncMissionProgress(force) {
+        var evaluation;
+        if (mode !== "challenge" || !activeLevel || !levelRuntime) {
+          return;
+        }
+        if (!force && frameId - lastStatsFrame < 6) {
+          return;
+        }
+        evaluation = activeLevel.evaluate(collectLevelStats(), levelRuntime, activeLayout);
+        activeObjectives = evaluation.objectives;
+        if (evaluation.complete && !levelRuntime.completed) {
+          levelRuntime.completed = true;
+          showCelebration(
+            evaluation.celebrationTitle || "过关啦",
+            evaluation.celebrationBody || "稳稳完成这一关，继续向前。"
+          );
+          showMissionBanner(evaluation.bannerTitle, evaluation.bannerBody);
+        }
+        lastStatsFrame = frameId;
+        updateMissionUI();
+      }
+
+      function enterSandboxMode() {
+        mode = "sandbox";
+        activeLevelIndex = -1;
+        activeLevel = null;
+        activeExploreMap = null;
+        activeLayout = null;
+        activeObjectives = [];
+        levelRuntime = null;
+        hideMissionBanner();
+        hideCelebration();
+        clearAll();
+        if (!materialAllowed(selectedType)) {
+          selectedType = "sand";
+        }
+        updateMissionUI();
+        updateSelectedMaterialUI();
+      }
+
+      function startExploreMap(index) {
+        if (index < 0 || index >= EXPLORE_MAPS.length) {
+          return;
+        }
+        mode = "explore";
+        activeExploreIndex = index;
+        activeExploreMap = EXPLORE_MAPS[index];
+        activeLevelIndex = -1;
+        activeLevel = null;
+        activeLayout = null;
+        activeObjectives = activeExploreMap.cards || [];
+        levelRuntime = null;
+        paused = false;
+        ui.pauseBtn.innerHTML = "暂停模拟";
+        hideMissionBanner();
+        hideCelebration();
+        clearAll();
+        activeExploreMap.buildScene();
+        selectedType = activeExploreMap.starterMaterial || selectedType;
+        lastStatsFrame = -1;
+        updateMissionUI();
+        updateSelectedMaterialUI();
+      }
+
+      function startLevel(index) {
+        if (index < 0 || index >= LEVELS.length) {
+          return;
+        }
+        mode = "challenge";
+        activeLevelIndex = index;
+        activeLevel = LEVELS[index];
+        activeExploreMap = null;
+        activeLayout = activeLevel.buildLayout();
+        activeObjectives = [];
+        levelRuntime = {
+          startedAt: currentNow,
+          lastEvalAt: currentNow,
+          completed: false,
+          counters: { explosions: 0 },
+          targets: {},
+          safeHold: 0
+        };
+        paused = false;
+        ui.pauseBtn.innerHTML = "暂停模拟";
+        hideMissionBanner();
+        hideCelebration();
+        clearAll();
+        activeLevel.setup(activeLayout, levelRuntime);
+
+        // 初始化关卡材料配额（用于“保留少量土块”等限制）
+        if (activeLevel.materialBudget) {
+          levelRuntime.materialBudgetRemaining = {};
+          Object.keys(activeLevel.materialBudget).forEach(function (key) {
+            var spec = activeLevel.materialBudget[key];
+            var amount = 0;
+            if (typeof spec === "number") {
+              amount = Math.max(0, Math.floor(spec));
+            } else if (spec && typeof spec === "object") {
+              if (typeof spec.fixed === "number") {
+                amount = Math.max(0, Math.floor(spec.fixed));
+              } else if (typeof spec.ratio === "number") {
+                amount = Math.floor(cols * rows * Math.max(0, spec.ratio));
+              }
+              if (typeof spec.min === "number") {
+                amount = Math.max(amount, Math.floor(spec.min));
+              }
+              if (typeof spec.max === "number") {
+                amount = Math.min(amount, Math.floor(spec.max));
+              }
+            }
+            levelRuntime.materialBudgetRemaining[key] = amount;
+          });
+        } else {
+          levelRuntime.materialBudgetRemaining = null;
+        }
+
+        selectedType = activeLevel.starterMaterial || firstAllowedMaterial();
+        lastStatsFrame = -1;
+        syncMissionProgress(true);
+        updateSelectedMaterialUI();
+      }
+
+      function restartCurrentLevel() {
+        if (mode === "challenge" && activeLevelIndex >= 0) {
+          startLevel(activeLevelIndex);
+        } else if (mode === "explore" && activeExploreIndex >= 0) {
+          startExploreMap(activeExploreIndex);
+        }
+      }
+
+      function nextLevel() {
+        if (mode === "challenge" && activeLevelIndex < LEVELS.length - 1) {
+          startLevel(activeLevelIndex + 1);
+        } else if (mode === "explore" && EXPLORE_MAPS.length) {
+          startExploreMap((activeExploreIndex + 1) % EXPLORE_MAPS.length);
+        }
+      }
+
+      function screenToGrid(clientX, clientY) {
+        var rect = ui.canvas.getBoundingClientRect();
+        var x = Math.floor(((clientX - rect.left) / rect.width) * cols);
+        var y = Math.floor(((clientY - rect.top) / rect.height) * rows);
+        return {
+          x: clamp(x, 0, cols - 1),
+          y: clamp(y, 0, rows - 1)
+        };
+      }
+
+      function moveBrushPreview(clientX, clientY) {
+        var rect = ui.pane.getBoundingClientRect();
+        ui.brushPreview.style.left = (clientX - rect.left) + "px";
+        ui.brushPreview.style.top = (clientY - rect.top) + "px";
+      }
+
+      function getEventClientPoint(event) {
+        var source = null;
+        if (event.touches && event.touches.length) {
+          source = event.touches[0];
+        } else if (event.changedTouches && event.changedTouches.length) {
+          source = event.changedTouches[0];
+        } else if (typeof event.clientX === "number" && typeof event.clientY === "number") {
+          source = event;
+        }
+        if (!source) {
+          return null;
+        }
+        return {
+          clientX: source.clientX,
+          clientY: source.clientY
+        };
+      }
+
+      function isTouchLikeEvent(event) {
+        return !!(event.touches || event.changedTouches || event.pointerType === "touch");
+      }
+
+      function stampBrush(cx, cy, erase) {
+        var radiusCells = Math.max(1, Math.ceil(brushRadius / cellSize));
+        var radiusSquared = radiusCells * radiusCells;
+        var dx;
+        var dy;
+        var x;
+        var y;
+        var remaining = null;
+        erase = !!erase;
+
+        if (!erase && mode === "challenge" && levelRuntime && levelRuntime.materialBudgetRemaining && levelRuntime.materialBudgetRemaining[selectedType] !== undefined) {
+          remaining = levelRuntime.materialBudgetRemaining[selectedType];
+          if (remaining <= 0) {
+            return;
+          }
+        }
+
+        for (dy = -radiusCells; dy <= radiusCells; dy += 1) {
+          for (dx = -radiusCells; dx <= radiusCells; dx += 1) {
+            if ((dx * dx) + (dy * dy) > radiusSquared) {
+              continue;
+            }
+            x = cx + dx;
+            y = cy + dy;
+            if (!inBounds(x, y)) {
+              continue;
+            }
+            if (erase) {
+              clearCell(x, y);
+            } else if (chance(0.9)) {
+              if (remaining !== null && remaining <= 0) {
+                continue;
+              }
+              var existing = getCell(x, y);
+              if (existing && existing.type === selectedType) {
+                continue;
+              }
+              // 第 1 关：水/雨“碰到草地”不应让草地消失（避免用笔刷把 plant 直接覆盖掉，保持草地总量更稳定）
+              if (
+                mode === "challenge" &&
+                activeLevelIndex === 0 &&
+                (selectedType === "water" || selectedType === "rain") &&
+                existing &&
+                existing.type === "plant"
+              ) {
+                continue;
+              }
+              setCell(x, y, createParticle(selectedType));
+              if (remaining !== null) {
+                remaining -= 1;
+                levelRuntime.materialBudgetRemaining[selectedType] = remaining;
+              }
+            }
+          }
+        }
+
+        if (remaining !== null) {
+          updateSelectedMaterialUI();
+        }
+      }
+
+      function drawLine(x0, y0, x1, y1, erase) {
+        var dx = x1 - x0;
+        var dy = y1 - y0;
+        var steps = Math.max(Math.abs(dx), Math.abs(dy), 1);
+        var i;
+        var x;
+        var y;
+        erase = !!erase;
+        for (i = 0; i <= steps; i += 1) {
+          x = Math.round(x0 + (dx * i) / steps);
+          y = Math.round(y0 + (dy * i) / steps);
+          stampBrush(x, y, erase);
+        }
+      }
+
+      function canDisplace(mover, target) {
+        var moverMat;
+        var targetMat;
+        if (!target) {
+          return true;
+        }
+        if (target.updated === frameId) {
+          return false;
+        }
+        moverMat = MATERIALS[mover.type];
+        targetMat = MATERIALS[target.type];
+        if (targetMat.behavior === "gas" || targetMat.behavior === "fire" || targetMat.behavior === "ember") {
+          return true;
+        }
+        if (moverMat.behavior === "powder" && targetMat.behavior === "liquid") {
+          return moverMat.density > targetMat.density;
+        }
+        if (moverMat.behavior === "liquid" && targetMat.behavior === "liquid") {
+          return moverMat.density > targetMat.density + 0.25;
+        }
+        return false;
+      }
+
+      function tryMove(x, y, nx, ny) {
+        var fromIndex;
+        var toIndex;
+        var particle;
+        var target;
+        if (!inBounds(nx, ny)) {
+          return false;
+        }
+        fromIndex = idx(x, y);
+        toIndex = idx(nx, ny);
+        particle = grid[fromIndex];
+        target = grid[toIndex];
+        if (!particle) {
+          return false;
+        }
+        if (!target) {
+          grid[toIndex] = particle;
+          grid[fromIndex] = null;
+          particle.updated = frameId;
+          return true;
+        }
+        if (!canDisplace(particle, target)) {
+          return false;
+        }
+        grid[toIndex] = particle;
+        grid[fromIndex] = target;
+        particle.updated = frameId;
+        target.updated = frameId;
+        return true;
+      }
+
+      function tryMoveCustom(x, y, nx, ny, predicate) {
+        var fromIndex;
+        var toIndex;
+        var particle;
+        var target;
+        if (!inBounds(nx, ny)) {
+          return false;
+        }
+        fromIndex = idx(x, y);
+        toIndex = idx(nx, ny);
+        particle = grid[fromIndex];
+        target = grid[toIndex];
+        if (!particle) {
+          return false;
+        }
+        if (!target) {
+          grid[toIndex] = particle;
+          grid[fromIndex] = null;
+          particle.updated = frameId;
+          return true;
+        }
+        if (!predicate || !predicate(target, nx, ny)) {
+          return false;
+        }
+        grid[toIndex] = particle;
+        grid[fromIndex] = target;
+        particle.updated = frameId;
+        target.updated = frameId;
+        return true;
+      }
+
+      function nudgeParticle(x, y, dx, dy) {
+        var order = [
+          [dx, dy],
+          [dx, 0],
+          [0, dy],
+          [dx * 2, dy * 2]
+        ];
+        var i;
+        for (i = 0; i < order.length; i += 1) {
+          if ((order[i][0] === 0 && order[i][1] === 0) || !inBounds(x + order[i][0], y + order[i][1])) {
+            continue;
+          }
+          if (tryMove(x, y, x + order[i][0], y + order[i][1])) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function addEffect(x, y, radius, life, inner, outer) {
+        effects.push({
+          x: x,
+          y: y,
+          radius: radius,
+          life: life,
+          maxLife: life,
+          inner: inner || "rgba(255, 200, 90, 0.55)",
+          outer: outer || "rgba(255, 80, 0, 0)"
+        });
+      }
+
+      function updateEffects() {
+        var nextEffects = [];
+        var i;
+        for (i = 0; i < effects.length; i += 1) {
+          effects[i].life -= 1;
+          if (effects[i].life > 0) {
+            nextEffects.push(effects[i]);
+          }
+        }
+        effects = nextEffects;
+      }
+
+      function findNeighbor(x, y, predicate) {
+        var i;
+        var nx;
+        var ny;
+        var particle;
+        for (i = 0; i < NEIGHBORS_8.length; i += 1) {
+          nx = x + NEIGHBORS_8[i][0];
+          ny = y + NEIGHBORS_8[i][1];
+          if (!inBounds(nx, ny)) {
+            continue;
+          }
+          particle = getCell(nx, ny);
+          if (particle && predicate(particle, nx, ny)) {
+            return { x: nx, y: ny, particle: particle };
+          }
+        }
+        return null;
+      }
+
+      function countAdjacentOfType(x, y, type) {
+        var i;
+        var particle;
+        var count = 0;
+        for (i = 0; i < NEIGHBORS_8.length; i += 1) {
+          particle = getCell(x + NEIGHBORS_8[i][0], y + NEIGHBORS_8[i][1]);
+          if (particle && particle.type === type) {
+            count += 1;
+          }
+        }
+        return count;
+      }
+
+      function countAdjacentMatching(x, y, predicate) {
+        var i;
+        var particle;
+        var count = 0;
+        for (i = 0; i < NEIGHBORS_8.length; i += 1) {
+          particle = getCell(x + NEIGHBORS_8[i][0], y + NEIGHBORS_8[i][1]);
+          if (particle && predicate(particle, x + NEIGHBORS_8[i][0], y + NEIGHBORS_8[i][1])) {
+            count += 1;
+          }
+        }
+        return count;
+      }
+
+      function hasWaterNearby(x, y) {
+        return !!findNeighbor(x, y, function (particle) {
+          return !!WATER_TYPES[particle.type];
+        });
+      }
+
+      function countWaterNearby(x, y) {
+        return countAdjacentMatching(x, y, function (particle) {
+          return !!WATER_TYPES[particle.type];
+        });
+      }
+
+      function isWaterType(type) {
+        return !!WATER_TYPES[type];
+      }
+
+      function isSoilGrowthType(type) {
+        return type === "soil" || type === "sand" || type === "ash";
+      }
+
+      function isNaturalGravityType(type) {
+        return type === "plant" || type === "algae" || type === "worm" || type === "bug";
+      }
+
+      function getParticleFlowValue(particle) {
+        var flow = MATERIALS[particle.type].flow;
+        if ((particle.type === "water" || particle.type === "rain") && isFiniteNumber(flow)) {
+          flow = Math.max(1, Math.round(getLevelScaledValue(flow, "waterFlowMultiplier")));
+        }
+        return Math.max(1, Math.round(flow || 1));
+      }
+
+      function getParticleFallSpeedValue(particle) {
+        var fallSpeed = MATERIALS[particle.type].fallSpeed;
+        if ((particle.type === "water" || particle.type === "rain") && isFiniteNumber(fallSpeed)) {
+          fallSpeed = Math.max(0, getLevelScaledValue(fallSpeed, "waterFallMultiplier"));
+        } else if (isNaturalGravityType(particle.type)) {
+          fallSpeed = Math.max(1, fallSpeed || 1);
+        }
+        if (MATERIALS[particle.type].behavior === "powder" || MATERIALS[particle.type].behavior === "liquid" || isNaturalGravityType(particle.type)) {
+          return getScaledStepCount(fallSpeed || 0, getGravityScale());
+        }
+        return Math.max(0, Math.round(fallSpeed || 0));
+      }
+
+      function levelFlagEnabled(key) {
+        var tuning = getActiveLevelTuning();
+        return !!(tuning && tuning[key]);
+      }
+
+      function isPlantSupportType(type) {
+        return type === "soil" || type === "root" || type === "plant" || type === "rock" || type === "metal";
+      }
+
+      function hasSoilContact(x, y) {
+        var below = getCell(x, y + 1);
+        if (below && isSoilGrowthType(below.type)) {
+          return true;
+        }
+        return !!findNeighbor(x, y, function (particle) {
+          return isSoilGrowthType(particle.type);
+        });
+      }
+
+      function isAirLikeParticle(particle) {
+        return !particle || MATERIALS[particle.type].behavior === "gas" || particle.type === "fire" || particle.type === "ember";
+      }
+
+      function isExposedToEnvironment(x, y) {
+        var offsets = [[0, -1], [-1, -1], [1, -1]];
+        var i;
+        var nx;
+        var ny;
+        var target;
+        if (y <= 1) {
+          return true;
+        }
+        for (i = 0; i < offsets.length; i += 1) {
+          nx = x + offsets[i][0];
+          ny = y + offsets[i][1];
+          if (!inBounds(nx, ny)) {
+            return true;
+          }
+          target = getCell(nx, ny);
+          if (isAirLikeParticle(target)) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function tryLiftAlgaeAboveWater(x, y) {
+        var candidates = [
+          [0, 1], [-1, 1], [1, 1],
+          [0, 0], [-1, 0], [1, 0]
+        ];
+        var below = getCell(x, y + 1);
+        var above = getCell(x, y - 1);
+        var i;
+        var j;
+        var temp;
+        var wx;
+        var wy;
+        var surfaceY;
+        var waterCell;
+        var surfaceCell;
+
+        if (below && isWaterType(below.type) && isAirLikeParticle(above)) {
+          return false;
+        }
+
+        for (i = candidates.length - 1; i > 0; i -= 1) {
+          j = Math.floor(Math.random() * (i + 1));
+          temp = candidates[i];
+          candidates[i] = candidates[j];
+          candidates[j] = temp;
+        }
+
+        for (i = 0; i < candidates.length; i += 1) {
+          wx = x + candidates[i][0];
+          wy = y + candidates[i][1];
+          surfaceY = wy - 1;
+          if (!inBounds(wx, wy) || !inBounds(wx, surfaceY)) {
+            continue;
+          }
+          waterCell = getCell(wx, wy);
+          surfaceCell = getCell(wx, surfaceY);
+          if (!waterCell || !isWaterType(waterCell.type) || !isAirLikeParticle(surfaceCell)) {
+            continue;
+          }
+          if (wx === x && surfaceY === y) {
+            return false;
+          }
+          clearCell(x, y);
+          setCell(wx, surfaceY, createParticle("algae"));
+          return true;
+        }
+        return false;
+      }
+
+      function tryBurrowThroughSoil(x, y) {
+        var offsets = [
+          [0, -1], [-1, 0], [1, 0], [0, 1],
+          [-1, -1], [1, -1], [-1, 1], [1, 1]
+        ];
+        var i;
+        var j;
+        var temp;
+        var nx;
+        var ny;
+        var target;
+
+        for (i = offsets.length - 1; i > 0; i -= 1) {
+          j = Math.floor(Math.random() * (i + 1));
+          temp = offsets[i];
+          offsets[i] = offsets[j];
+          offsets[j] = temp;
+        }
+
+        for (i = 0; i < offsets.length; i += 1) {
+          nx = x + offsets[i][0];
+          ny = y + offsets[i][1];
+          if (!inBounds(nx, ny)) {
+            continue;
+          }
+          target = getCell(nx, ny);
+          if (target && isSoilGrowthType(target.type) && tryMoveCustom(x, y, nx, ny, function (other) {
+            return isSoilGrowthType(other.type);
+          })) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function tryConvertNeighborType(x, y, offsets, predicate, type, validator, overrides) {
+        var order = offsets.slice();
+        var i;
+        var j;
+        var temp;
+        var nx;
+        var ny;
+        var target;
+        for (i = order.length - 1; i > 0; i -= 1) {
+          j = Math.floor(Math.random() * (i + 1));
+          temp = order[i];
+          order[i] = order[j];
+          order[j] = temp;
+        }
+        for (i = 0; i < order.length; i += 1) {
+          nx = x + order[i][0];
+          ny = y + order[i][1];
+          if (!inBounds(nx, ny)) {
+            continue;
+          }
+          target = getCell(nx, ny);
+          if (!target || !predicate(target, nx, ny)) {
+            continue;
+          }
+          if (validator && !validator(nx, ny, target)) {
+            continue;
+          }
+          setCell(nx, ny, createParticle(type, overrides));
+          return true;
+        }
+        return false;
+      }
+
+      function tryNaturalFall(x, y, particle) {
+        var px = x;
+        var py = y;
+        var step;
+        var dirs;
+        var d;
+        var moved;
+        var fallSpeed = getParticleFallSpeedValue(particle);
+
+        function canSinkInto(target) {
+          return isWaterType(target.type) || target.type === "steam" || target.type === "smoke" || target.type === "fire" || target.type === "ember";
+        }
+
+        if (fallSpeed <= 0) {
+          return false;
+        }
+
+        for (step = 0; step < fallSpeed; step += 1) {
+          if (tryMoveCustom(px, py, px, py + 1, canSinkInto)) {
+            py += 1;
+            continue;
+          }
+          dirs = chance(0.5) ? [-1, 1] : [1, -1];
+          moved = false;
+          for (d = 0; d < dirs.length; d += 1) {
+            if (tryMoveCustom(px, py, px + dirs[d], py + 1, canSinkInto)) {
+              px += dirs[d];
+              py += 1;
+              moved = true;
+              break;
+            }
+          }
+          if (!moved) {
+            break;
+          }
+        }
+
+        return px !== x || py !== y;
+      }
+
+      function placeParticleIfEmpty(x, y, type, overrides) {
+        if (!inBounds(x, y) || getCell(x, y)) {
+          return false;
+        }
+        setCell(x, y, createParticle(type, overrides));
+        return true;
+      }
+
+      function trySpreadToEmpty(x, y, offsets, type, validator, overrides) {
+        var order = offsets.slice();
+        var i;
+        var j;
+        var temp;
+        var nx;
+        var ny;
+        for (i = order.length - 1; i > 0; i -= 1) {
+          j = Math.floor(Math.random() * (i + 1));
+          temp = order[i];
+          order[i] = order[j];
+          order[j] = temp;
+        }
+        for (i = 0; i < order.length; i += 1) {
+          nx = x + order[i][0];
+          ny = y + order[i][1];
+          if (!inBounds(nx, ny) || getCell(nx, ny)) {
+            continue;
+          }
+          if (!validator || validator(nx, ny)) {
+            setCell(nx, ny, createParticle(type, overrides));
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function hasHotNeighbor(x, y) {
+        return !!findNeighbor(x, y, function (particle) {
+          return !!HOT_TYPES[particle.type];
+        });
+      }
+
+      function germinateSeedAt(x, y) {
+        var below = getCell(x, y + 1);
+        setCell(x, y, createParticle("plant"));
+        if (below && below.type === "soil" && chance(0.65)) {
+          setCell(x, y + 1, createParticle("root"));
+        } else if (!below && inBounds(x, y + 1)) {
+          setCell(x, y + 1, createParticle("root"));
+        }
+        trySpreadToEmpty(x, y, [[0, -1], [-1, -1], [1, -1]], "plant", function (nx, ny) {
+          var support = getCell(nx, ny + 1);
+          return !!support && isPlantSupportType(support.type);
+        });
+      }
+
+      function encouragePlantGrowth(x, y, strength) {
+        var growChance = strength || 0.03;
+        if (chance(growChance)) {
+          trySpreadToEmpty(x, y, [[0, -1], [-1, -1], [1, -1]], "plant", function (nx, ny) {
+            var support = getCell(nx, ny + 1);
+            return !!support && isPlantSupportType(support.type);
+          });
+        }
+        if (chance(growChance * 0.8)) {
+          trySpreadToEmpty(x, y, [[-1, 0], [1, 0]], "plant", function (nx, ny) {
+            var support = getCell(nx, ny + 1);
+            return !!support && isPlantSupportType(support.type);
+          });
+        }
+        if (chance(growChance * 0.75)) {
+          trySpreadToEmpty(x, y, [[0, 1], [-1, 1], [1, 1]], "root", function (nx, ny) {
+            var support = getCell(nx, ny);
+            return !support || support.type === "soil" || support.type === "sand" || support.type === "ash";
+          });
+        }
+      }
+
+      function spawnParticleNearby(x, y, type, attempts) {
+        var i;
+        var nx;
+        var ny;
+        var occupant;
+        attempts = attempts || 4;
+        for (i = 0; i < attempts; i += 1) {
+          nx = x + randomRange(-1, 1);
+          ny = y + randomRange(-1, 1);
+          if (!inBounds(nx, ny)) {
+            continue;
+          }
+          occupant = getCell(nx, ny);
+          if (!occupant || MATERIALS[occupant.type].behavior === "gas") {
+            setCell(nx, ny, createParticle(type));
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function blastRadiusForType(type) {
+        return type === "explosive" ? 10 : 6;
+      }
+
+      function igniteCell(x, y, intensity) {
+        var target;
+        intensity = intensity || "normal";
+        if (!inBounds(x, y)) {
+          return;
+        }
+        target = getCell(x, y);
+        if (!target) {
+          setCell(x, y, createParticle("fire"));
+          return;
+        }
+        if (target.type === "plant" || target.type === "oil") {
+          setCell(x, y, createParticle("fire", {
+            life: intensity === "strong" ? randomRange(16, 24) : randomRange(12, 18)
+          }));
+          if (chance(0.7)) {
+            spawnParticleNearby(x, y, "smoke", 2);
+          }
+          if (chance(0.55)) {
+            spawnParticleNearby(x, y, "ember", 2);
+          }
+        } else if (target.type === "gunpowder" || target.type === "explosive") {
+          triggerExplosion(x, y, target.type === "explosive" ? 10 : 6, 0);
+        }
+      }
+
+      function triggerExplosion(x, y, radius, depth) {
+        var ny;
+        var nx;
+        var dx;
+        var dy;
+        var dist;
+        var force;
+        var target;
+        var i;
+
+        if (!inBounds(x, y) || depth > 2) {
+          return;
+        }
+
+        if (depth === 0 && levelRuntime) {
+          levelRuntime.counters.explosions += 1;
+        }
+
+        clearCell(x, y);
+        addEffect(x, y, radius * 1.5, 18, "rgba(255, 226, 124, 0.65)", "rgba(255, 84, 0, 0)");
+
+        for (ny = Math.max(0, y - radius); ny <= Math.min(rows - 1, y + radius); ny += 1) {
+          for (nx = Math.max(0, x - radius); nx <= Math.min(cols - 1, x + radius); nx += 1) {
+            dx = nx - x;
+            dy = ny - y;
+            dist = Math.sqrt((dx * dx) + (dy * dy));
+            if (dist > radius) {
+              continue;
+            }
+            force = 1 - dist / Math.max(1, radius);
+            target = getCell(nx, ny);
+
+            if (!target) {
+              if (force > 0.7 && chance(0.25)) {
+                setCell(nx, ny, createParticle("fire"));
+              } else if (force > 0.45 && chance(0.18)) {
+                setCell(nx, ny, createParticle("smoke"));
+              }
+              continue;
+            }
+
+            if ((target.type === "gunpowder" || target.type === "explosive") && !(nx === x && ny === y)) {
+              clearCell(nx, ny);
+              triggerExplosion(nx, ny, blastRadiusForType(target.type), depth + 1);
+              continue;
+            }
+
+            if (target.type === "rock") {
+              if (force > 0.7) {
+                nudgeParticle(nx, ny, sign(dx || (Math.random() - 0.5)), sign(dy || (Math.random() - 0.5)));
+              }
+              continue;
+            }
+
+            if (target.type === "metal") {
+              if (force > 0.8 && chance(0.2)) {
+                spawnParticleNearby(nx, ny, "ember", 3);
+              }
+              continue;
+            }
+
+            if (force > 0.82) {
+              clearCell(nx, ny);
+              if (chance(0.5)) {
+                setCell(nx, ny, createParticle("fire"));
+              }
+            } else if (force > 0.45) {
+              if (SOFT_TYPES[target.type]) {
+                clearCell(nx, ny);
+                if (chance(0.45)) {
+                  setCell(nx, ny, createParticle("smoke"));
+                }
+              } else if (target.type === "water" || target.type === "rain") {
+                setCell(nx, ny, createParticle("steam"));
+              } else if (target.type === "ice") {
+                setCell(nx, ny, chance(0.55) ? createParticle("steam") : createParticle("water"));
+              } else {
+                nudgeParticle(nx, ny, sign(dx), sign(dy));
+              }
+            }
+          }
+        }
+
+        for (i = 0; i < radius * 2; i += 1) {
+          spawnParticleNearby(x, y, "fire", 6);
+          spawnParticleNearby(x, y, "smoke", 6);
+          if (chance(0.75)) {
+            spawnParticleNearby(x, y, "ember", 6);
+          }
+        }
+      }
+
+      function extinguishFireReaction(x, y, fast) {
+        var fireNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "fire" || other.type === "ember";
+        });
+
+        if (!fireNeighbor || !chance(getLevelRate(fast ? 0.32 : 0.24))) {
+          return false;
+        }
+
+        clearCell(fireNeighbor.x, fireNeighbor.y);
+        addEffect(x, y, 3.5, 10, "rgba(215, 244, 255, 0.45)", "rgba(150, 220, 255, 0)");
+
+        if (fast) {
+          if (chance(0.6)) {
+            setCell(fireNeighbor.x, fireNeighbor.y, createParticle("steam", { life: randomRange(16, 32) }));
+          }
+          if (chance(0.55)) {
+            clearCell(x, y);
+          }
+        } else {
+          setCell(x, y, createParticle("steam", { life: randomRange(20, 48) }));
+          if (chance(0.5)) {
+            setCell(fireNeighbor.x, fireNeighbor.y, createParticle("steam", { life: randomRange(18, 40) }));
+          }
+        }
+        return true;
+      }
+
+      function reactWaterLike(x, y, type) {
+        var lavaNeighbor;
+        var iceNeighbor;
+        if (extinguishFireReaction(x, y, type === "rain")) {
+          return true;
+        }
+        lavaNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "lava";
+        });
+        if (lavaNeighbor && chance(getLevelRate(0.26))) {
+          setCell(x, y, createParticle("steam", { life: randomRange(28, 60) }));
+          setCell(lavaNeighbor.x, lavaNeighbor.y, createParticle("rock"));
+          addEffect(x, y, 4.5, 12, "rgba(255, 244, 214, 0.5)", "rgba(255, 120, 0, 0)");
+          return true;
+        }
+        iceNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "ice";
+        });
+        if (iceNeighbor && chance(getLevelRate(0.012))) {
+          setCell(iceNeighbor.x, iceNeighbor.y, createParticle("water"));
+          addEffect(iceNeighbor.x, iceNeighbor.y, 2.8, 10, "rgba(190, 238, 255, 0.32)", "rgba(190, 238, 255, 0)");
+        }
+        return false;
+      }
+
+      function coolNearbyLava(cx, cy, extraCount) {
+        var offsets = [
+          [0, 0],
+          [1, 0], [-1, 0], [0, 1], [0, -1],
+          [1, 1], [-1, 1], [1, -1], [-1, -1],
+          [2, 0], [-2, 0], [0, 2], [0, -2],
+          [2, 1], [-2, 1], [2, -1], [-2, -1],
+          [1, 2], [-1, 2], [1, -2], [-1, -2]
+        ];
+        var cooled = 0;
+        var i;
+        var nx;
+        var ny;
+        var target;
+        extraCount = Math.max(0, extraCount || 0);
+        for (i = 0; i < offsets.length && cooled < extraCount; i += 1) {
+          nx = cx + offsets[i][0];
+          ny = cy + offsets[i][1];
+          if (!inBounds(nx, ny)) {
+            continue;
+          }
+          target = getCell(nx, ny);
+          if (target && target.type === "lava") {
+            setCell(nx, ny, createParticle("rock"));
+            cooled += 1;
+          } else if (target && target.type === "ice" && chance(getLevelRate(0.75))) {
+            setCell(nx, ny, chance(0.6) ? createParticle("steam") : createParticle("water"));
+          }
+        }
+        return cooled;
+      }
+
+      function tryPowderMove(x, y, particle) {
+        var mat = MATERIALS[particle.type];
+        var px = x;
+        var py = y;
+        var step;
+        var dirs;
+        var moved;
+        var d;
+        var fallSpeed = getParticleFallSpeedValue(particle);
+
+        for (step = 0; step < fallSpeed; step += 1) {
+          if (tryMove(px, py, px, py + 1)) {
+            py += 1;
+            continue;
+          }
+          dirs = chance(0.5) ? [-1, 1] : [1, -1];
+          moved = false;
+          for (d = 0; d < dirs.length; d += 1) {
+            if (tryMove(px, py, px + dirs[d], py + 1)) {
+              px += dirs[d];
+              py += 1;
+              moved = true;
+              break;
+            }
+          }
+          if (!moved) {
+            break;
+          }
+        }
+      }
+
+      function tryLiquidMove(x, y, particle) {
+        var px = x;
+        var py = y;
+        var movedDown = false;
+        var step;
+        var diagDirs;
+        var moved;
+        var d;
+        var sideDir;
+        var spread;
+        var dirList;
+        var tx;
+        var fallSpeed = getParticleFallSpeedValue(particle);
+
+        for (step = 0; step < fallSpeed; step += 1) {
+          if (tryMove(px, py, px, py + 1)) {
+            py += 1;
+            movedDown = true;
+            continue;
+          }
+          diagDirs = chance(0.5) ? [-1, 1] : [1, -1];
+          moved = false;
+          for (d = 0; d < diagDirs.length; d += 1) {
+            if (tryMove(px, py, px + diagDirs[d], py + 1)) {
+              px += diagDirs[d];
+              py += 1;
+              moved = true;
+              movedDown = true;
+              break;
+            }
+          }
+          if (!moved) {
+            break;
+          }
+        }
+
+        if (movedDown) {
+          return;
+        }
+
+        sideDir = chance(0.5) ? -1 : 1;
+        spread = getScaledStepCount(getParticleFlowValue(particle), getGravityScale());
+        if (spread <= 0) {
+          return;
+        }
+        dirList = [sideDir, -sideDir];
+        for (d = 0; d < dirList.length; d += 1) {
+          tx = px;
+          for (step = 0; step < spread; step += 1) {
+            if (tryMove(tx, py, tx + dirList[d], py)) {
+              tx += dirList[d];
+            } else {
+              break;
+            }
+          }
+          if (tx !== px) {
+            return;
+          }
+        }
+      }
+
+      function tryGasMove(x, y, particle) {
+        var mat = MATERIALS[particle.type];
+        var px = x;
+        var py = y;
+        var upwardFirst = [
+          [0, -1],
+          [chance(0.5) ? -1 : 1, -1],
+          [chance(0.5) ? 1 : -1, -1]
+        ];
+        var i;
+        var sideSpread;
+        var dir;
+        var tx;
+
+        for (i = 0; i < upwardFirst.length; i += 1) {
+          if (tryMove(px, py, px + upwardFirst[i][0], py + upwardFirst[i][1])) {
+            return;
+          }
+        }
+
+        sideSpread = randomRange(1, Math.max(1, mat.flow));
+        dir = chance(0.5) ? -1 : 1;
+        for (i = 0; i < 2; i += 1) {
+          tx = px;
+          while (sideSpread > 0) {
+            if (tryMove(tx, py, tx + dir, py)) {
+              tx += dir;
+            } else {
+              break;
+            }
+            sideSpread -= 1;
+          }
+          if (tx !== px) {
+            return;
+          }
+          dir = -dir;
+          sideSpread = randomRange(1, Math.max(1, mat.flow));
+        }
+
+        if (chance(0.18)) {
+          tryMove(px, py, px, py + 1);
+        }
+      }
+
+      function expireParticle(x, y, particle) {
+        if (particle.type === "fire") {
+          if (chance(0.45)) {
+            setCell(x, y, createParticle("smoke"));
+          } else if (chance(0.35)) {
+            setCell(x, y, createParticle("ash"));
+          } else {
+            clearCell(x, y);
+          }
+        } else if (particle.type === "ember") {
+          if (chance(0.55)) {
+            setCell(x, y, createParticle("smoke"));
+          } else if (chance(0.25)) {
+            setCell(x, y, createParticle("ash"));
+          } else {
+            clearCell(x, y);
+          }
+        } else if (particle.type === "steam") {
+          setCell(x, y, createParticle("rain", { life: randomRange(48, 96) }));
+        } else if (particle.type === "rain") {
+          setCell(x, y, createParticle("water"));
+        } else if (particle.type === "acid") {
+          if (chance(0.45)) {
+            setCell(x, y, createParticle("smoke", { life: randomRange(20, 50) }));
+          } else {
+            clearCell(x, y);
+          }
+        } else {
+          clearCell(x, y);
+        }
+      }
+
+      function updateStaticParticle(x, y, particle) {
+        var hotNeighbor;
+        var waterNeighbor;
+        var reactionBoost;
+
+        if (particle.type === "plant") {
+          if (hasHotNeighbor(x, y) && chance(getLevelRate(0.22))) {
+            igniteCell(x, y, "normal");
+            return;
+          }
+          waterNeighbor = findNeighbor(x, y, function (other) {
+            return isWaterType(other.type);
+          });
+          if (waterNeighbor && chance(getLevelRate(0.012))) {
+            if (tryConvertNeighborType(x, y, NEIGHBORS_8, function (other) {
+              return isWaterType(other.type);
+            }, "plant", function (nx, ny) {
+              var below = getCell(nx, ny + 1);
+              return !!below && isPlantSupportType(below.type);
+            })) {
+              addEffect(x, y, 2.6, 9, "rgba(112, 220, 132, 0.30)", "rgba(112, 220, 132, 0)");
+            } else {
+              encouragePlantGrowth(x, y, getLevelRate(0.035));
+            }
+          }
+          if (!levelFlagEnabled("disablePlantGravity") && tryNaturalFall(x, y, particle)) {
+            return;
+          }
+          return;
+        }
+
+        if (particle.type === "root") {
+          if (hasHotNeighbor(x, y) && chance(getLevelRate(0.18))) {
+            igniteCell(x, y, "normal");
+            return;
+          }
+          if (hasSoilContact(x, y) && chance(getLevelRate(0.03))) {
+            setCell(x, y, createParticle("plant"));
+            addEffect(x, y, 2.3, 8, "rgba(120, 214, 112, 0.28)", "rgba(120, 214, 112, 0)");
+            return;
+          }
+          return;
+        }
+
+        if (particle.type === "algae") {
+          if (hasHotNeighbor(x, y) && chance(getLevelRate(0.18))) {
+            igniteCell(x, y, "normal");
+            return;
+          }
+          waterNeighbor = findNeighbor(x, y, function (other) {
+            return isWaterType(other.type);
+          });
+          if (waterNeighbor && chance(getGravityRate(0.4)) && tryLiftAlgaeAboveWater(x, y)) {
+            addEffect(x, y, 2.5, 8, "rgba(96, 214, 168, 0.26)", "rgba(96, 214, 168, 0)");
+            return;
+          }
+          if (waterNeighbor && chance(getLevelRate(0.014)) && tryConvertNeighborType(x, y, NEIGHBORS_8, function (other) {
+            return isWaterType(other.type);
+          }, "algae")) {
+            addEffect(x, y, 2.4, 8, "rgba(82, 220, 162, 0.28)", "rgba(82, 220, 162, 0)");
+          }
+          if (tryNaturalFall(x, y, particle)) {
+            return;
+          }
+          return;
+        }
+
+        if (particle.type === "ice") {
+          hotNeighbor = findNeighbor(x, y, function (other) {
+            return !!HOT_TYPES[other.type];
+          });
+          if (hotNeighbor && chance(getLevelRate(0.22))) {
+            reactionBoost = Math.max(1, Math.round(getLevelScaledValue(1, "iceLavaReactionMultiplier")));
+            setCell(x, y, createParticle(hotNeighbor.particle.type === "lava" ? "steam" : "water"));
+            if (hotNeighbor.particle.type === "lava" && reactionBoost > 1) {
+              coolNearbyLava(hotNeighbor.x, hotNeighbor.y, reactionBoost - 1);
+            }
+            addEffect(x, y, 3.2, 10, "rgba(200, 244, 255, 0.42)", "rgba(200, 244, 255, 0)");
+            return;
+          }
+          waterNeighbor = findNeighbor(x, y, function (other) {
+            return other.type === "water";
+          });
+          if (waterNeighbor && chance(getLevelRate(0.008))) {
+            setCell(x, y, createParticle("water"));
+          }
+        }
+      }
+
+      function updatePowderParticle(x, y, particle) {
+        if (particle.type === "soil" && levelFlagEnabled("disableSoilGravity")) {
+          return;
+        }
+        if (particle.type === "seed" && hasSoilContact(x, y) && chance(getLevelRate(countWaterNearby(x, y) > 0 ? 0.065 : 0.03))) {
+          germinateSeedAt(x, y);
+          addEffect(x, y, 2.4, 8, "rgba(108, 214, 110, 0.28)", "rgba(108, 214, 110, 0)");
+          return;
+        }
+        if ((particle.type === "gunpowder" || particle.type === "explosive") && hasHotNeighbor(x, y) && chance(getLevelRate(0.35))) {
+          triggerExplosion(x, y, blastRadiusForType(particle.type), 0);
+          return;
+        }
+        tryPowderMove(x, y, particle);
+      }
+
+      function updateWaterParticle(x, y, particle) {
+        if (reactWaterLike(x, y, particle.type)) {
+          return;
+        }
+        if (particle.type === "water" && particle.age > 24 && isExposedToEnvironment(x, y) && chance(getLevelRate(0.0042))) {
+          setCell(x, y, createParticle("steam", { life: randomRange(72, 140) }));
+          addEffect(x, y, 2.3, 8, "rgba(214, 240, 255, 0.26)", "rgba(214, 240, 255, 0)");
+          return;
+        }
+        tryLiquidMove(x, y, particle);
+      }
+
+      function updateOilParticle(x, y, particle) {
+        if (hasHotNeighbor(x, y) && chance(getLevelRate(0.28))) {
+          igniteCell(x, y, "strong");
+          if (chance(0.65)) {
+            spawnParticleNearby(x, y, "smoke", 5);
+          }
+          return;
+        }
+        tryLiquidMove(x, y, particle);
+      }
+
+      function updateAcidParticle(x, y, particle) {
+        var i;
+        var nx;
+        var ny;
+        var target;
+        var targetMat;
+        var corroded = false;
+        for (i = 0; i < NEIGHBORS_8.length; i += 1) {
+          nx = x + NEIGHBORS_8[i][0];
+          ny = y + NEIGHBORS_8[i][1];
+          target = getCell(nx, ny);
+          if (!target) {
+            continue;
+          }
+          targetMat = MATERIALS[target.type];
+          if (targetMat.acidImmune || target.type === "acid" || target.type === "steam" || target.type === "smoke" || target.type === "fire") {
+            continue;
+          }
+          if (chance(getLevelRate(0.22))) {
+            clearCell(nx, ny);
+            if (isFiniteNumber(particle.life)) {
+              particle.life -= 5;
+            }
+            corroded = true;
+            if (chance(0.65)) {
+              spawnParticleNearby(nx, ny, "smoke", 4);
+            }
+          }
+        }
+        if (corroded) {
+          addEffect(x, y, 2.8, 8, "rgba(180, 255, 120, 0.3)", "rgba(130, 255, 90, 0)");
+        }
+        tryLiquidMove(x, y, particle);
+      }
+
+      function updateLavaParticle(x, y, particle) {
+        var waterNeighbor;
+        var iceNeighbor;
+        var rockNeighbor;
+        var flammableNeighbor;
+        var exposure;
+        var reactionBoost;
+
+        waterNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "water" || other.type === "rain";
+        });
+        if (waterNeighbor && chance(getLevelRate(0.26))) {
+          setCell(waterNeighbor.x, waterNeighbor.y, createParticle("steam"));
+          setCell(x, y, createParticle("rock"));
+          addEffect(x, y, 5.4, 14, "rgba(255, 227, 150, 0.45)", "rgba(255, 96, 0, 0)");
+          return;
+        }
+
+        iceNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "ice";
+        });
+        if (iceNeighbor && chance(getLevelRate(0.22))) {
+          reactionBoost = Math.max(1, Math.round(getLevelScaledValue(1, "iceLavaReactionMultiplier")));
+          setCell(iceNeighbor.x, iceNeighbor.y, chance(0.6) ? createParticle("steam") : createParticle("water"));
+          setCell(x, y, createParticle("rock"));
+          if (reactionBoost > 1) {
+            coolNearbyLava(x, y, reactionBoost - 1);
+          }
+          addEffect(x, y, 4.8, 12, "rgba(232, 249, 255, 0.42)", "rgba(255, 100, 0, 0)");
+          return;
+        }
+
+        rockNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "rock";
+        });
+        if (rockNeighbor && chance(getLevelRate(0.04))) {
+          setCell(rockNeighbor.x, rockNeighbor.y, createParticle("lava", { temp: 18 }));
+        }
+
+        flammableNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "plant" || other.type === "oil" || other.type === "gunpowder" || other.type === "explosive";
+        });
+        if (flammableNeighbor && chance(getLevelRate(0.24))) {
+          igniteCell(flammableNeighbor.x, flammableNeighbor.y, "strong");
+        }
+
+        exposure = countAdjacentOfType(x, y, "lava");
+        particle.temp -= exposure <= 1 ? 0.24 : 0.07;
+        if (findNeighbor(x, y, function (other) {
+          return other.type === "water" || other.type === "steam";
+        })) {
+          particle.temp -= 0.3;
+        }
+        if (particle.temp <= 0) {
+          setCell(x, y, createParticle("rock"));
+          return;
+        }
+
+        tryLiquidMove(x, y, particle);
+      }
+
+      function spreadFireToNeighbors(x, y) {
+        var i;
+        var nx;
+        var ny;
+        var target;
+        for (i = 0; i < NEIGHBORS_8.length; i += 1) {
+          nx = x + NEIGHBORS_8[i][0];
+          ny = y + NEIGHBORS_8[i][1];
+          target = getCell(nx, ny);
+          if (!target) {
+            continue;
+          }
+          if (target.type === "plant" && chance(getLevelRate(0.26, "fireSpreadMultiplier"))) {
+            igniteCell(nx, ny, "normal");
+          } else if (target.type === "oil" && chance(getLevelRate(0.38, "fireSpreadMultiplier"))) {
+            igniteCell(nx, ny, "strong");
+          } else if ((target.type === "gunpowder" || target.type === "explosive") && chance(getLevelRate(0.35, "fireSpreadMultiplier"))) {
+            triggerExplosion(nx, ny, blastRadiusForType(target.type), 0);
+          } else if (target.type === "ice" && chance(getLevelRate(0.22, "fireSpreadMultiplier"))) {
+            setCell(nx, ny, createParticle("water"));
+          }
+        }
+      }
+
+      function updateFireParticle(x, y) {
+        var waterNeighbor = findNeighbor(x, y, function (other) {
+          return !!EXTINGUISH_TYPES[other.type];
+        });
+        if (waterNeighbor && chance(getLevelRate(0.3))) {
+          clearCell(x, y);
+          if (waterNeighbor.particle.type === "rain" || chance(0.65)) {
+            setCell(waterNeighbor.x, waterNeighbor.y, createParticle("steam", { life: randomRange(16, 36) }));
+          }
+          addEffect(x, y, 3.2, 10, "rgba(225, 242, 255, 0.4)", "rgba(160, 225, 255, 0)");
+          return;
+        }
+        spreadFireToNeighbors(x, y);
+        if (chance(getLevelRate(0.38, "fireSmokeMultiplier"))) {
+          spawnParticleNearby(x, y, "smoke", 4);
+        }
+        if (chance(getLevelRate(0.28, "fireEmberMultiplier"))) {
+          spawnParticleNearby(x, y, "ember", 4);
+        }
+        tryGasMove(x, y, getCell(x, y));
+      }
+
+      function updateEmberParticle(x, y) {
+        spreadFireToNeighbors(x, y);
+        if (chance(getLevelRate(0.22, "emberSmokeMultiplier"))) {
+          spawnParticleNearby(x, y, "smoke", 3);
+        }
+        tryGasMove(x, y, getCell(x, y));
+      }
+
+      function updateSteamParticle(x, y, particle) {
+        var iceNeighbor = findNeighbor(x, y, function (other) {
+          return other.type === "ice";
+        });
+        var attachedSurface = findNeighbor(x, y, function (other) {
+          return MATERIALS[other.type].behavior === "static" || MATERIALS[other.type].behavior === "powder";
+        });
+        if ((iceNeighbor && chance(getLevelRate(0.2))) || (y < rows * 0.18 && chance(getLevelRate(0.09))) || (attachedSurface && particle.age > 18 && chance(getLevelRate(0.05)))) {
+          setCell(x, y, createParticle("rain", { life: randomRange(56, 110) }));
+          return;
+        }
+        tryGasMove(x, y, getCell(x, y));
+      }
+
+      function updateSmokeParticle(x, y) {
+        tryGasMove(x, y, getCell(x, y));
+      }
+
+      function updateCreatureParticle(x, y, particle) {
+        var meal;
+        var dirs;
+        var d;
+        var dir;
+        var support;
+        if (hasHotNeighbor(x, y) && chance(getLevelRate(0.2))) {
+          igniteCell(x, y, "normal");
+          return;
+        }
+        if (particle.type === "bug") {
+          meal = findNeighbor(x, y, function (other) {
+            return other.type === "plant" || other.type === "algae";
+          });
+          if (meal && chance(getLevelRate(0.14))) {
+            setCell(meal.x, meal.y, createParticle("bug", { life: randomRange(260, 460) }));
+            particle.life = isFiniteNumber(particle.life) ? particle.life + 18 : particle.life;
+            particle.maxLife = isFiniteNumber(particle.maxLife) ? Math.max(particle.maxLife, particle.life) : particle.maxLife;
+            addEffect(meal.x, meal.y, 2.2, 7, "rgba(176, 238, 110, 0.24)", "rgba(176, 238, 110, 0)");
+            return;
+          }
+        }
+        if (hasSoilContact(x, y) && chance(getGravityRate(0.28)) && tryBurrowThroughSoil(x, y)) {
+          addEffect(x, y, 2.0, 6, particle.type === "worm" ? "rgba(214, 161, 131, 0.22)" : "rgba(176, 228, 122, 0.22)", "rgba(255, 255, 255, 0)");
+          return;
+        }
+        if (tryNaturalFall(x, y, particle)) {
+          return;
+        }
+        if (particle.type === "worm" && hasSoilContact(x, y) && chance(getLevelRate(0.012))) {
+          if (trySpreadToEmpty(x, y, [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1]], "worm", function (nx, ny) {
+            support = getCell(nx, ny + 1);
+            return !!support && isSoilGrowthType(support.type);
+          })) {
+            addEffect(x, y, 2.2, 7, "rgba(214, 161, 131, 0.25)", "rgba(214, 161, 131, 0)");
+            return;
+          }
+        }
+        dirs = chance(0.5) ? [-1, 1] : [1, -1];
+        for (d = 0; d < dirs.length; d += 1) {
+          dir = dirs[d];
+          support = getCell(x + dir, y + 1);
+          if (particle.type === "worm" && support && isSoilGrowthType(support.type) && tryMoveCustom(x, y, x + dir, y, function (target) {
+            return MATERIALS[target.type].behavior === "gas" || target.type === "steam" || target.type === "smoke";
+          })) {
+            return;
+          }
+          if (particle.type === "bug" && tryMoveCustom(x, y, x + dir, y, function (target) {
+            return MATERIALS[target.type].behavior === "gas" || target.type === "steam" || target.type === "smoke";
+          })) {
+            return;
+          }
+        }
+      }
+
+      function updateParticle(x, y, particle) {
+        var behavior;
+        if (!particle || particle.updated === frameId) {
+          return;
+        }
+        particle.updated = frameId;
+        particle.age += 1;
+        if (isFiniteNumber(particle.life)) {
+          particle.life -= 1;
+          if (particle.life <= 0) {
+            expireParticle(x, y, particle);
+            return;
+          }
+        }
+        behavior = MATERIALS[particle.type].behavior;
+        if (behavior === "static") {
+          updateStaticParticle(x, y, particle);
+        } else if (behavior === "powder") {
+          updatePowderParticle(x, y, particle);
+        } else if (behavior === "liquid") {
+          if (particle.type === "water" || particle.type === "rain") {
+            updateWaterParticle(x, y, particle);
+          } else if (particle.type === "lava") {
+            updateLavaParticle(x, y, particle);
+          } else if (particle.type === "oil") {
+            updateOilParticle(x, y, particle);
+          } else if (particle.type === "acid") {
+            updateAcidParticle(x, y, particle);
+          } else {
+            tryLiquidMove(x, y, particle);
+          }
+        } else if (behavior === "gas") {
+          if (particle.type === "steam") {
+            updateSteamParticle(x, y, particle);
+          } else {
+            updateSmokeParticle(x, y, particle);
+          }
+        } else if (behavior === "fire") {
+          updateFireParticle(x, y, particle);
+        } else if (behavior === "ember") {
+          updateEmberParticle(x, y, particle);
+        } else if (behavior === "creature") {
+          updateCreatureParticle(x, y, particle);
+        }
+      }
+
+      function simulateFrame() {
+        var maxUpdates = clamp(Math.floor(cols * rows * 0.32), 12000, 65000);
+        var bandHeight = 18;
+        var bandCount = Math.max(1, Math.ceil(rows / bandHeight));
+        var startBand = frameId % bandCount;
+        var updates = 0;
+        var band;
+        var bandIndex;
+        var yMax;
+        var yMin;
+        var y;
+        var x;
+        var leftToRight;
+        var particle;
+
+        for (band = 0; band < bandCount; band += 1) {
+          bandIndex = (startBand + band) % bandCount;
+          yMax = rows - 1 - (bandIndex * bandHeight);
+          yMin = Math.max(0, yMax - bandHeight + 1);
+
+          for (y = yMax; y >= yMin; y -= 1) {
+            if (y < 0 || y >= rows) {
+              continue;
+            }
+            leftToRight = ((y + frameId) & 1) === 0;
+            if (leftToRight) {
+              for (x = 0; x < cols; x += 1) {
+                particle = getCell(x, y);
+                if (!particle) {
+                  continue;
+                }
+                updateParticle(x, y, particle);
+                updates += 1;
+                if (updates >= maxUpdates) {
+                  return;
+                }
+              }
+            } else {
+              for (x = cols - 1; x >= 0; x -= 1) {
+                particle = getCell(x, y);
+                if (!particle) {
+                  continue;
+                }
+                updateParticle(x, y, particle);
+                updates += 1;
+                if (updates >= maxUpdates) {
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      function renderParticleColor(particle) {
+        var mat = MATERIALS[particle.type];
+        var base = mat.rgb;
+        var accent = mat.accentRgb;
+        var pulse = (Math.sin((frameId + particle.seed * 18) * 0.18) + 1) * 0.5;
+        var lifeT;
+        var heat;
+        var fade;
+        var variation;
+
+        if (particle.type === "fire") {
+          lifeT = clamp(particle.life / particle.maxLife, 0, 1);
+          return {
+            r: clamp(Math.round(mix(255, 255, lifeT)), 0, 255),
+            g: clamp(Math.round(mix(90, 232, lifeT) + pulse * 18), 0, 255),
+            b: clamp(Math.round(mix(18, 88, lifeT)), 0, 255),
+            a: 255
+          };
+        }
+
+        if (particle.type === "ember") {
+          lifeT = clamp(particle.life / particle.maxLife, 0, 1);
+          return {
+            r: 255,
+            g: clamp(Math.round(mix(100, 200, lifeT) + pulse * 10), 0, 255),
+            b: clamp(Math.round(mix(20, 70, lifeT)), 0, 255),
+            a: 255
+          };
+        }
+
+        if (particle.type === "lava") {
+          heat = clamp(particle.temp / Math.max(1, particle.maxTemp), 0, 1);
+          return {
+            r: clamp(Math.round(mix(base.r, accent.r, heat * 0.7 + pulse * 0.08)), 0, 255),
+            g: clamp(Math.round(mix(base.g, accent.g, heat)), 0, 255),
+            b: clamp(Math.round(mix(base.b, accent.b, heat * 0.35)), 0, 255),
+            a: 255
+          };
+        }
+
+        if (particle.type === "steam" || particle.type === "smoke") {
+          fade = clamp(particle.life / particle.maxLife, 0, 1);
+          return {
+            r: clamp(Math.round(mix(base.r, accent.r, pulse * 0.2)), 0, 255),
+            g: clamp(Math.round(mix(base.g, accent.g, pulse * 0.2)), 0, 255),
+            b: clamp(Math.round(mix(base.b, accent.b, pulse * 0.2)), 0, 255),
+            a: clamp(Math.round(255 * (mat.alpha || 0.35) * fade), 18, 180)
+          };
+        }
+
+        variation = Math.round((particle.seed - 0.5) * 28);
+        return {
+          r: clamp(base.r + variation, 0, 255),
+          g: clamp(base.g + variation, 0, 255),
+          b: clamp(base.b + variation, 0, 255),
+          a: 255
+        };
+      }
+
+      function render() {
+        var i;
+        var y;
+        var x;
+        var particle;
+        var color;
+        var offset;
+        var effect;
+        var progress;
+        var radius;
+        var gradient;
+
+        for (i = 0; i < pixelBuffer.length; i += 4) {
+          pixelBuffer[i] = 10;
+          pixelBuffer[i + 1] = 15;
+          pixelBuffer[i + 2] = 20;
+          pixelBuffer[i + 3] = 255;
+        }
+
+        for (y = 0; y < rows; y += 1) {
+          for (x = 0; x < cols; x += 1) {
+            particle = getCell(x, y);
+            if (!particle) {
+              continue;
+            }
+            color = renderParticleColor(particle);
+            offset = idx(x, y) * 4;
+            pixelBuffer[offset] = color.r;
+            pixelBuffer[offset + 1] = color.g;
+            pixelBuffer[offset + 2] = color.b;
+            pixelBuffer[offset + 3] = color.a;
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        if (!effects.length) {
+          renderMissionOverlay();
+          return;
+        }
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (i = 0; i < effects.length; i += 1) {
+          effect = effects[i];
+          progress = 1 - effect.life / effect.maxLife;
+          radius = effect.radius * (0.35 + progress * 0.9);
+          gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, radius);
+          gradient.addColorStop(0, effect.inner);
+          gradient.addColorStop(1, effect.outer);
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        renderMissionOverlay();
+      }
+
+      function renderMissionOverlay() {
+        var i;
+        var zone;
+        if (mode !== "challenge" || !activeLayout) {
+          return;
+        }
+        ctx.save();
+        ctx.lineWidth = 1;
+        if (ctx.setLineDash) {
+          ctx.setLineDash([4, 3]);
+        }
+        ctx.font = "8px sans-serif";
+        for (i = 0; i < activeLayout.zones.length; i += 1) {
+          zone = activeLayout.zones[i];
+          ctx.strokeStyle = zone.color;
+          ctx.strokeRect(zone.rect.x + 0.5, zone.rect.y + 0.5, zone.rect.w, zone.rect.h);
+          ctx.fillStyle = "rgba(7, 12, 18, 0.78)";
+          ctx.fillRect(zone.rect.x, Math.max(0, zone.rect.y - 10), Math.min(zone.rect.w, 58), 10);
+          ctx.fillStyle = "#eef5ff";
+          ctx.fillText(zone.label, zone.rect.x + 3, Math.max(7, zone.rect.y - 3));
+        }
+        ctx.restore();
+      }
+
+      function updateStatus(now) {
+        var fps = 1000 / Math.max(1, now - lastTime);
+        smoothedFps = smoothedFps === 0 ? fps : mix(smoothedFps, fps, 0.12);
+        ui.fpsLabel.innerHTML = String(Math.round(smoothedFps));
+        ui.particleLabel.innerHTML = String(particleCount);
+        lastTime = now;
+      }
+
+      function tick(now) {
+        currentNow = isFiniteNumber(now) ? now : getNowMs();
+        frameId += 1;
+        if (!paused) {
+          simulateFrame();
+          updateEffects();
+          syncMissionProgress(false);
+        }
+        render();
+        updateStatus(currentNow);
+        requestFrame(tick);
+      }
+
+      function clearAll() {
+        var i;
+        for (i = 0; i < grid.length; i += 1) {
+          grid[i] = null;
+        }
+        particleCount = 0;
+        effects = [];
+      }
+
+      function onPointerDown(event) {
+        var pointData;
+        var point;
+        var isTouchLike = isTouchLikeEvent(event);
+        if (!isTouchLike && event.button !== 0 && event.button !== 2) {
+          return;
+        }
+        pointData = getEventClientPoint(event);
+        if (!pointData) {
+          return;
+        }
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        mouse.down = true;
+        mouse.erase = !isTouchLike && event.button === 2;
+        mouse.pointerId = event.pointerId !== undefined ? event.pointerId : null;
+        mouse.inside = true;
+        moveBrushPreview(pointData.clientX, pointData.clientY);
+        ui.brushPreview.style.display = "block";
+        if (mouse.pointerId !== null && ui.canvas.setPointerCapture) {
+          try {
+            ui.canvas.setPointerCapture(mouse.pointerId);
+          } catch (captureError) {}
+        }
+        point = screenToGrid(pointData.clientX, pointData.clientY);
+        mouse.lastGridX = point.x;
+        mouse.lastGridY = point.y;
+        drawLine(point.x, point.y, point.x, point.y, mouse.erase);
+      }
+
+      function onPointerMove(event) {
+        var pointData;
+        var point;
+        if (mouse.pointerId !== null && event.pointerId !== undefined && event.pointerId !== mouse.pointerId) {
+          return;
+        }
+        pointData = getEventClientPoint(event);
+        if (!pointData) {
+          return;
+        }
+        if (mouse.down && event.cancelable) {
+          event.preventDefault();
+        }
+        point = screenToGrid(pointData.clientX, pointData.clientY);
+        moveBrushPreview(pointData.clientX, pointData.clientY);
+        if (mouse.down && mouse.lastGridX !== null && mouse.lastGridY !== null) {
+          drawLine(mouse.lastGridX, mouse.lastGridY, point.x, point.y, mouse.erase);
+        }
+        mouse.lastGridX = point.x;
+        mouse.lastGridY = point.y;
+      }
+
+      function onPointerUp(event) {
+        if (mouse.pointerId !== null && event && event.pointerId !== undefined && event.pointerId !== mouse.pointerId) {
+          return;
+        }
+        if (event && event.cancelable) {
+          event.preventDefault();
+        }
+        if (mouse.pointerId !== null && ui.canvas.releasePointerCapture) {
+          try {
+            ui.canvas.releasePointerCapture(mouse.pointerId);
+          } catch (releaseError) {}
+        }
+        mouse.down = false;
+        mouse.erase = false;
+        mouse.pointerId = null;
+        mouse.lastGridX = null;
+        mouse.lastGridY = null;
+        if (isTouchLikeEvent(event || {})) {
+          mouse.inside = false;
+          ui.brushPreview.style.display = "none";
+        }
+      }
+
+      function bindEvents() {
+        window.addEventListener("resize", resizeSimulation);
+        ui.canvas.addEventListener("contextmenu", function (event) {
+          event.preventDefault();
+        });
+        ui.canvas.addEventListener("mouseenter", function () {
+          mouse.inside = true;
+          ui.brushPreview.style.display = "block";
+        });
+        ui.canvas.addEventListener("mouseleave", function () {
+          mouse.inside = false;
+          ui.brushPreview.style.display = "none";
+        });
+        if (window.PointerEvent) {
+          ui.canvas.addEventListener("pointerdown", onPointerDown);
+          window.addEventListener("pointermove", onPointerMove);
+          window.addEventListener("pointerup", onPointerUp);
+          window.addEventListener("pointercancel", onPointerUp);
+        } else {
+          ui.canvas.addEventListener("mousedown", onPointerDown);
+          window.addEventListener("mousemove", onPointerMove);
+          window.addEventListener("mouseup", onPointerUp);
+          ui.canvas.addEventListener("touchstart", onPointerDown, { passive: false });
+          window.addEventListener("touchmove", onPointerMove, { passive: false });
+          window.addEventListener("touchend", onPointerUp, { passive: false });
+          window.addEventListener("touchcancel", onPointerUp, { passive: false });
+        }
+        ui.canvas.addEventListener("wheel", function (event) {
+          var delta = event.deltaY > 0 ? -1 : 1;
+          event.preventDefault();
+          brushRadius = clamp(brushRadius + delta, 1, 50);
+          updateBrushUI();
+        }, { passive: false });
+        ui.brushSlider.addEventListener("input", function (event) {
+          brushRadius = clamp(parseInt(event.target.value, 10), 1, 50);
+          updateBrushUI();
+        });
+        ui.gravitySlider.addEventListener("input", function (event) {
+          getCurrentPhysicsState().gravity = clamp(parseInt(event.target.value, 10) / 100, 0, 3);
+          updatePhysicsUI();
+          updateMissionUI();
+        });
+        ui.reactionSlider.addEventListener("input", function (event) {
+          getCurrentPhysicsState().reaction = clamp(parseInt(event.target.value, 10) / 100, 0, 3);
+          updatePhysicsUI();
+          updateMissionUI();
+        });
+        ui.clearBtn.addEventListener("click", function () {
+          if (mode === "challenge" || mode === "explore") {
+            restartCurrentLevel();
+          } else {
+            clearAll();
+          }
+        });
+        ui.pauseBtn.addEventListener("click", function () {
+          paused = !paused;
+          ui.pauseBtn.innerHTML = paused ? "继续模拟" : "暂停模拟";
+        });
+        ui.hintToggle.addEventListener("click", function () {
+          hintCollapsed = !hintCollapsed;
+          updateHintUI();
+        });
+        ui.sandboxModeBtn.addEventListener("click", function () {
+          enterSandboxMode();
+        });
+        ui.exploreModeBtn.addEventListener("click", function () {
+          startExploreMap(activeExploreIndex >= 0 ? activeExploreIndex : 0);
+        });
+        ui.challengeModeBtn.addEventListener("click", function () {
+          startLevel(activeLevelIndex >= 0 ? activeLevelIndex : 0);
+        });
+        ui.restartLevelBtn.addEventListener("click", restartCurrentLevel);
+        ui.nextLevelBtn.addEventListener("click", nextLevel);
+        ui.bannerRestartBtn.addEventListener("click", restartCurrentLevel);
+        ui.bannerNextBtn.addEventListener("click", nextLevel);
+      }
+
+      function init() {
+        buildMaterialButtons();
+        buildExploreMapButtons();
+        updateBrushUI();
+        updatePhysicsUI();
+        updateHintUI();
+        updateMissionUI();
+        resizeSimulation();
+        bindEvents();
+        requestFrame(function (time) {
+          lastTime = isFiniteNumber(time) ? time : getNowMs();
+          requestFrame(tick);
+        });
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
